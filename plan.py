@@ -85,6 +85,7 @@ class Plan:
             new_task.id = cur_id
             plan.append(new_task)
             cur_id += 1
+        plan.sort(key=id)
 
         # add free time slots
         free_slots = 0

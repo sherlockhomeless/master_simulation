@@ -5,7 +5,9 @@ from plan import Plan
 import plan
 import process
 
+# TODO: Visualizte thresholds
 # TODO: lateness in time vs lateness in instructions
+# BUG: Task_id generation is completely fucked; task 0-n on p0, n+1-m on p1,...
 # TODO: task-IDs decreasing instead of increasing
 # TODO: Visualisierung durchschnittlicher Threshold
 # TODO: Mehrere Prozesse pro Job um Plan-Vorstellung besser zu entsprechen
@@ -13,7 +15,7 @@ import process
 # --- ADMIN STUFF ---
 LOG = True
 WRITE_PLAN = './plan.log'
-JUST_GENERATE_PLAN = True
+JUST_GENERATE_PLAN = False
 
 # --- CONFIGS ---
 IPS = 4000000000

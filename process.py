@@ -6,6 +6,8 @@ max_buff_usg = 0
 ticks_off = 1
 reschedule_time = 0
 max_task_deviation = 0
+
+
 # --- CLASS ---
 class Threshold:
     def __init__(self, tasks, buffer):
@@ -26,6 +28,7 @@ class Threshold:
         self.instructions_sum = sum(self.tasks_plan)
         self.instructions_left = sum(self.tasks_plan)
         self.instructions_done = 0
+        self.process_id = self.cur_task.process_id
         self.finished_process = False
 
         # thresholds
@@ -39,7 +42,7 @@ class Threshold:
         self.ticks_off = ticks_off
 
         # admin
-        self.log_t2 = open('t2.log', 'w')
+        self.log_thresh = open(f'thresh_{self.process_id}.log', 'w')
 
 
     def run_task(self, task_id, ins):
@@ -96,21 +99,21 @@ class Threshold:
         self.t_minus2 = self.calc_t_minus(self.cur_task.length_plan)
 
         if self.log is True:
-            self.log_t2.write(f' id: {self.cur_task.task_id}, t2:{self.t2}\n')
+            self.log_thresh.write(f'{self.cur_task.task_id} {self.t1} {self.t2} {self.t_minus2}\n')
+
 
     def calc_t1(self, instructions_planned) -> int:
-        return min(max(instructions_planned * self.max_task_deviation, instructions_planned + self.ipt * self.ticks_off), self.max_task_deviation * instructions_planned)
+        return int(min(max(instructions_planned * self.max_task_deviation, instructions_planned + self.ipt * self.ticks_off), self.max_task_deviation * instructions_planned))
 
     def calc_t2(self, buffer_allowence) -> int:
         # TODO: static threshhold depending on stress level
-        return self.t1 + buffer_allowence - self.reschedule_time
+        return int(self.t1 + buffer_allowence - self.reschedule_time)
 
     def calc_t_minus(self, instructions_planned):
-        return -1 * self.t2 * 2
+        return int(-1 * self.t2 * 2)
 
     def __del__(self):
-        self.log_t2.close()
-        print("ran __del__")
+        self.log_thresh.close()
 
 class ProcessRunner:
     def __init__(self, plan, processes):
