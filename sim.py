@@ -12,7 +12,7 @@ import process
 
 # --- ADMIN STUFF ---
 LOG = True
-WRITE_PLAN = './plan'
+WRITE_PLAN = './plan.log'
 JUST_GENERATE_PLAN = True
 
 # --- CONFIGS ---
@@ -54,7 +54,7 @@ def run_sim():
     processes = create_processes(plan.process_info)
     runner = create_process_runner(plan.task_list, processes)
 
-    runner.write_plan_to_file("test.p")
+    runner.write_plan_to_file(WRITE_PLAN)
     while not runner.has_finished() and not JUST_GENERATE_PLAN:
         runner.run_tick()
 
