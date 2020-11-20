@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from typing import Tuple, List
-from process import Process, ProcessRunner
+from process import Process
 from plan import Plan
+from task import Task
+from process_runner import ProcessRunner
 import plan
 import process
 import task
-from task import Task
+import process_runner
 
 # TODO: Visualizte thresholds
 # TODO: lateness in time vs lateness in instructions
@@ -16,7 +18,7 @@ from task import Task
 
 # --- ADMIN STUFF ---
 LOG = True
-WRITE_PLAN = 'logs/plan.log'
+WRITE_PLAN = "logs/plan.log"
 JUST_GENERATE_PLAN = False
 
 # --- CONFIGS ---
@@ -32,6 +34,7 @@ MAX_BUFF_USAGE = 0.2
 TICKS_OFF = 10
 MAX_TASK_DEVIAION = 2.0 # 200%
 DEADLINE = 1.1 # total time * DEADLINE = Time to be finished
+MAX_TASK_OVERSTEP = 20
 
 # --- PLAN CREATION ---
 FREE_TIME = 10
@@ -48,7 +51,6 @@ PROCESS_MAX_LEN = 10**2
 BUFFER_MIN = 2
 BUFFER_MAX = 10
 LOAD = 1 #systemload
-
 
 
 def run_sim():
@@ -71,7 +73,6 @@ def create_processes(process_info: Tuple[List[Task], int, int]):
     '''
     processes = []
     for p in process_info:
-        print(p)
         processes.append(Process(p[0], p[1], p[2])) # tasklist, buffer, deadline
     return processes
 
@@ -91,14 +92,17 @@ def sort_plan(plan: 'Plan') -> list:
 if __name__ == '__main__':
     task.sigma = SIGMA
     process.ipt = INS_PER_TICK
+    process_runner.ipt = INS_PER_TICK
     process.load = LOAD
     process.log = LOG
+    process_runner.log = LOG
     process.hz = HZ
     process.max_buff_usg = MAX_BUFF_USAGE
     process.ticks_off = TICKS_OFF
     process.reschedule_time = RESCHEDULE_TIME
     process.max_task_deviation = MAX_TASK_DEVIAION
     process.deadline = DEADLINE
+    process.max_task_overstep = MAX_TASK_OVERSTEP * INS_PER_TICK
     run_sim()
 
 

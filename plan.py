@@ -136,7 +136,6 @@ class Plan:
             if task.task_id == -1:
                 continue
             latest_task[task.process_id] = instr_counter
-        print(latest_task)
         return latest_task
 
 

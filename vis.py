@@ -12,33 +12,39 @@ Format: [P_ID] [T1] [T2] [T3]
 
 #  ---file names---
 
+LOG_FOLDER = "logs" # Base-Folder for all log-files
+PIC_FOLDER = "pics" # Base-Folder for graphics
 THRESH2_ALL = 'thresh2_all.log' # all t2 logs of all processes
 THRESH_CHRON = 'thresh_cron.log' # chronological change of t1, t2, mt2
 
 
 
-
 def run_vis():
-    log_files = find_threshold_logs()
+
+    # visualize threshold development for all processes
+    log_files = find_threshold_logs("thresh")
     thresholds = parse_logs(log_files)
     statistics = do_stat(thresholds)
-    visualize(thresholds)
+    vis_all_processes(thresholds)
+    vis_all_processes(thresholds, thresh_type='t1')
 
+    # visualize pure overreach allowed per process & threshold
+    log_files = find_threshold_logs("pure")
+    thresholds = parse_logs(log_files)
+    vis_all_processes(thresholds, value_type='pure')
+    vis_all_processes(thresholds, thresh_type='t1', value_type='pure')
 
-def visualize(threshs):
-    # todo: legend
-    vis_all_processes()
-    plt.clt() # should clear all axis
-
-
-def vis_all_processes(threshs):
+def vis_all_processes(threshs, thresh_type='t2', value_type='sum'):
+    """
+    Visualize the development of Threshold 2 for all processes
+    """
     t = list(range(max(len(i) for i in threshs)))
     functions = []
 
     for p in threshs:
         functions.append([])
         for new_t in p:
-            functions[-1].append(new_t.t2)
+            functions[-1].append(new_t.t2) if thresh_type == 't2' else functions[-1].append(new_t.t1)
         while len(functions[-1]) < len(t):
             functions[-1].append(0)
 
@@ -51,12 +57,12 @@ def vis_all_processes(threshs):
     plt.xlabel = 't'
     plt.ylabel = 'ips'
     plt.legend()
-    save_fig(THRESH2_ALL)
+    save_fig(f"all_processes_{thresh_type}_{value_type}")
 
+def save_fig(filename):
+    plt.savefig(f'{PIC_FOLDER}/{filename}.png', dpi=150)
+    plt.clf() # should clear all axis
 
-
-def save_fig(fpath):
-    plt.save_fig(fpath, dpi=150)
 
 
 def do_stat(threshs) -> dict:
@@ -86,15 +92,15 @@ def parse_logs(log_files) -> list:
     return logs
 
 
-def find_threshold_logs() -> list:
+def find_threshold_logs(pattern: str) -> list:
     """
-    find all threshold log files in cwd
+    find all threshold log files in LOG_FOLDER that contains the given pattern
     """
-    files = listdir('.')
+    files = listdir(LOG_FOLDER)
     logs = []
     for f in files:
-        if "thresh_" in f and "log" in f:
-            logs.append(f)
+        if pattern in f and ".log" in f:
+            logs.append(f'{LOG_FOLDER}/{f}')
     logs.sort()
     print(logs)
     return logs
@@ -105,6 +111,7 @@ class log_struct:
         self.t1 = int(t1)/IPS
         self.t2 = int(t2)/IPS
         self.mt2 = int(mt2)/IPS
+
 
     def __str__(self) -> str:
         return f'[{self.t1}, {self.t2}, {self.mt2}]'

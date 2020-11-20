@@ -1,3 +1,5 @@
+from task import Task
+
 ipt = None # instructions per tick
 load = None #
 log = False
@@ -6,17 +8,18 @@ max_buff_usg = 0
 ticks_off = 1
 reschedule_time = 0
 max_task_deviation = None
+max_task_overstep = None # depending on the general lateness on the node, this value will be adjusted
 
 
 # --- CLASS ---
 class Process:
-    def __init__(self, tasks, buffer, deadline):
+    def __init__(self, tasks: Task, buffer: int, deadline: int):
         """
         Representation of a process on a node.
         Params:
             tasks: List of Tasks
             buffer: number of instructions from end of last task to deadline
-            deadline: when is the deadline
+            deadline: Deadline in instruction, counting from 0 at start
         """
         # global
         self.load = load # systemload
@@ -26,8 +29,9 @@ class Process:
         self.max_buff_usg = max_buff_usg
 
         # state keeping process
-        self.tasks_plan = tasks
-        self.cur_task = self.tasks_plan[0]
+        self.tasks_plan = tasks # list of all tasks
+        self.cur_task = self.tasks_plan[0] # currently running task
+        self.cur_task_length_plan = self.cur_task.length_plan # the originally tracked length of plan
         self.buffer = int(buffer) # whole buffer in instructions
         self.buffer_allowence = 0
         self.lateness_process = 0
@@ -37,7 +41,8 @@ class Process:
         self.instructions_done = 0
         self.process_id = self.cur_task.process_id
         self.finished_process = False
-        self.deadline = deadline # last task time + buffer
+        self.DEADLINE = deadline # last task time + buffer
+        self.max_task_overstep = max_task_overstep
 
         # thresholds
         self.t1 = 0
@@ -52,6 +57,7 @@ class Process:
 
         # admin
         self.log_thresh = open(f'logs/thresh_{self.process_id}.log', 'w')
+        self.log_thresh_pure = open(f'logs/pure_{self.process_id}.log', 'w') # logging of the pure instruction amount that is been granted
 
     def run_task(self, task_id, ins):
         '''
@@ -65,6 +71,7 @@ class Process:
                 self.finished_process = True
                 return
             self.cur_task = self.tasks_plan[0]
+            self.cur_task_length_plan = self.cur_task.length_plan
             self.lateness_task = 0
 
 
@@ -100,23 +107,26 @@ class Process:
 
     def update_thresholds(self):
         buffer_allowence = self.instructions_left/self.instructions_sum * self.buffer * self.load
-        self.t1 = self.calc_t1(self.cur_task.length_plan)
+        self.t1 = self.calc_t1(self.cur_task_length_plan)
         self.t2 = self.calc_t2(buffer_allowence)
         self.t_minus2 = self.calc_t_minus(self.cur_task.length_plan)
 
         if self.log is True:
             self.log_thresh.write(f'{self.cur_task.task_id} {self.t1} {self.t2} {self.t_minus2}\n')
-
+            self.log_thresh_pure.write(f'{self.cur_task.task_id} {self.t1 - self.cur_task_length_plan} {self.t2 - self.cur_task_length_plan} {self.t_minus2}\n')
 
     def calc_t1(self, instructions_planned) -> int:
-        progess_relative = instructions_planned * self.max_task_deviation, instructions_planned + self.ipt * self.ticks_off
         max_dev = self.max_task_deviation * instructions_planned
-        return int(min(min(progess_relative),max_dev))
+        max_overreach = instructions_planned + self.max_task_overstep
+        t1 = int(min(max_dev, max_overreach))
+        print("max_dev") if max_dev < max_overreach else print("max_overreach")
+        assert t1 > 0
+
+        return t1
 
     def calc_t2(self, buffer_allowence) -> int:
         # TODO: static threshhold depending on stress level
         allowence_relative = self.t1 + buffer_allowence - self.reschedule_time
-        # max_dev = TODO: HIER
         return int(self.t1 + buffer_allowence - self.reschedule_time)
 
     def calc_t_minus(self, instructions_planned):
@@ -125,94 +135,5 @@ class Process:
     def __del__(self):
         self.log_thresh.close()
 
-class ProcessRunner:
-    def __init__(self, plan, processes):
-        global ipt
-        global log
-        self.ipt = ipt
-        self.plan = plan
-        self.processes = processes
-        self.stress = 0
-        self.cur_task = plan[0]
-        self.cur_process = processes[self.cur_task.process_id]
-        self.tick = 0
-        self.finished_tasks = 0
-        if log is True:
-            self.thresh_log = open('global.log', 'w')
-            self.log = open('log', 'w')
-
-
-    def run_tick(self):
-        '''
-        Runs the simulation.
-        '''
-        assert self.cur_task.length_real > 0
-
-        finished = self.cur_task.run(self.ipt)
-        if log:
-            self.log_thresh()
-        # current task has still instructions left
-        if finished == 1:
-            if self.cur_process.threshold_state == 0:
-                return
-            elif self.cur_process.threshold_state == 1:
-                self.preempt_current_process()
-            elif self.cur_process.threshold_state == 2:
-                self.singal_prediction_failure()
-
-        self.cur_process.run_task(self.cur_task.task_id, self.ipt)
-        # the current task was finished
-        if finished < 0:
-            self.cur_task.task_finished = True
-            self.pick_next_task()
-            self.cur_task.run(finished * -1)
-            self.cur_process.run_task(self.cur_task.task_id, self.ipt)
-            print(f'task {self.finished_tasks} finished')
-            self.finished_tasks += 1
-        self.log.write(str(self.cur_task) + '\n')
-        self.tick += 1
-
-        #TODO: RUN instructions on process with exact amount of actual done instructions
-
-    def preempt_current_process(self):
-        pass #TODO: Implement
-
-    def singal_prediction_failure(self):
-        pass #TODO: Implement
-
-    def pick_next_task(self):
-        self.plan = self.plan[1:]
-        if len(self.plan) == 0:
-            return
-        self.cur_task = self.plan[0]
-        self.cur_process = self.processes[self.cur_task.process_id]
-
-    def run(self):
-        while self.has_finished is False:
-            self.run_tick()
-
-    def has_finished(self) -> bool:
-        return False if len(self.plan) > 0 else True
-
-    def write_plan_to_file(self, path):
-        meta = f'{len(self.processes)};'
-        # meta = f'{len(self.processes)},{len(self.plan)};;'
-        for i,p in enumerate(self.processes):
-            meta += f'{i},{i},{p.buffer};'
-
-        tasks_s = ''
-        for task in self.plan:
-            tasks_s += f'{task.process_id},{task.process_id},{task.task_id},{task.length_plan},{task.length_real};'
-
-        plan_s = meta + ";;" + tasks_s
-
-        with open(path, 'w') as f:
-            f.write(plan_s)
-            # now again in human readable ;)
-            f.write('\n\n#########\n\n')
-            for task in self.plan:
-                f.write(f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
-
-    def log_thresh(self):
-        cp = self.cur_process
-        self.thresh_log.write(f'{cp.cur_task.task_id} {cp.t1} {cp.t2} {cp.t_minus2}\n')
+    def update_stress(self, change: int):
+        pass # TODO: implement; change max_task_overstep
