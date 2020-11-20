@@ -5,12 +5,19 @@ hz = None
 max_buff_usg = 0
 ticks_off = 1
 reschedule_time = 0
-max_task_deviation = 0
+max_task_deviation = None
 
 
 # --- CLASS ---
-class Threshold:
-    def __init__(self, tasks, buffer):
+class Process:
+    def __init__(self, tasks, buffer, deadline):
+        """
+        Representation of a process on a node.
+        Params:
+            tasks: List of Tasks
+            buffer: number of instructions from end of last task to deadline
+            deadline: when is the deadline
+        """
         # global
         self.load = load # systemload
         self.hz = hz
@@ -30,6 +37,7 @@ class Threshold:
         self.instructions_done = 0
         self.process_id = self.cur_task.process_id
         self.finished_process = False
+        self.deadline = deadline # last task time + buffer
 
         # thresholds
         self.t1 = 0
@@ -40,17 +48,15 @@ class Threshold:
         self.threshold_state = 0 # holds the current state of the threshold
         self.max_task_deviation = max_task_deviation
         self.ticks_off = ticks_off
+        self.thresh_flag = None # remembers by which component of the formular the threshold is defined
 
         # admin
-        self.log_thresh = open(f'thresh_{self.process_id}.log', 'w')
-
+        self.log_thresh = open(f'logs/thresh_{self.process_id}.log', 'w')
 
     def run_task(self, task_id, ins):
         '''
         updates the state of the task list
         '''
-        #    import pdb; pdb.set_trace()
-
         self.update_lateness()
         self.update_thresholds()
         if self.cur_task.length_real <= 0:
@@ -103,10 +109,14 @@ class Threshold:
 
 
     def calc_t1(self, instructions_planned) -> int:
-        return int(min(max(instructions_planned * self.max_task_deviation, instructions_planned + self.ipt * self.ticks_off), self.max_task_deviation * instructions_planned))
+        progess_relative = instructions_planned * self.max_task_deviation, instructions_planned + self.ipt * self.ticks_off
+        max_dev = self.max_task_deviation * instructions_planned
+        return int(min(min(progess_relative),max_dev))
 
     def calc_t2(self, buffer_allowence) -> int:
         # TODO: static threshhold depending on stress level
+        allowence_relative = self.t1 + buffer_allowence - self.reschedule_time
+        # max_dev = TODO: HIER
         return int(self.t1 + buffer_allowence - self.reschedule_time)
 
     def calc_t_minus(self, instructions_planned):
@@ -128,6 +138,7 @@ class ProcessRunner:
         self.tick = 0
         self.finished_tasks = 0
         if log is True:
+            self.thresh_log = open('global.log', 'w')
             self.log = open('log', 'w')
 
 
@@ -138,7 +149,8 @@ class ProcessRunner:
         assert self.cur_task.length_real > 0
 
         finished = self.cur_task.run(self.ipt)
-
+        if log:
+            self.log_thresh()
         # current task has still instructions left
         if finished == 1:
             if self.cur_process.threshold_state == 0:
@@ -183,20 +195,24 @@ class ProcessRunner:
         return False if len(self.plan) > 0 else True
 
     def write_plan_to_file(self, path):
-
-        buff_list = ''
+        meta = f'{len(self.processes)};'
+        # meta = f'{len(self.processes)},{len(self.plan)};;'
         for i,p in enumerate(self.processes):
-            buff_list += f'{i} {p.buffer},'
+            meta += f'{i},{i},{p.buffer};'
 
         tasks_s = ''
         for task in self.plan:
-            tasks_s += f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real};'
+            tasks_s += f'{task.process_id},{task.process_id},{task.task_id},{task.length_plan},{task.length_real};'
 
-        meta_s = f'{len(self.plan)} HERE_LENGTH'
-
-        task_list = meta_s + ';;;' + tasks_s
-        plan_s = buff_list + ";;;" + task_list
+        plan_s = meta + ";;" + tasks_s
 
         with open(path, 'w') as f:
-            print(plan_s)
             f.write(plan_s)
+            # now again in human readable ;)
+            f.write('\n\n#########\n\n')
+            for task in self.plan:
+                f.write(f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
+
+    def log_thresh(self):
+        cp = self.cur_process
+        self.thresh_log.write(f'{cp.cur_task.task_id} {cp.t1} {cp.t2} {cp.t_minus2}\n')
