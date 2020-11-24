@@ -11,9 +11,11 @@ class Plan:
         print(type(processes[0]))
         assert type(processes[0]) is Process
 
-        self.processes= processes
-        self.task_list = task_list # [task0,]
-        self.number_tasks_per_process = self.get_number_tasks() # last number is amount of free slots
+        self.processes = processes # [Process, Process]
+        self.task_list = task_list # [task0,task1,task2]
+
+        self.number_tasks_per_process = self.get_number_tasks_per_p() # last number is amount of free slots
+        self.number_all_tasks = self.get_number_all_tasks()
 
     @staticmethod
     def generate_plan(num_processes, min_len_p, max_len_p, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
@@ -143,7 +145,7 @@ class Plan:
         return latest_task
 
 
-    def get_number_tasks(self) -> list:
+    def get_number_tasks_per_p(self) -> list:
         """
         Returns the number of tasks per Process.
         """
@@ -157,7 +159,12 @@ class Plan:
         return lenghts
 
 
-
+    def get_number_all_tasks(self) -> int:
+        counter = 0
+        for task in self.task_list:
+            if task.process_id != 1:
+                counter += 1
+        return counter
 
     @staticmethod
     def pick_next_task(all_pro_and_tasks):

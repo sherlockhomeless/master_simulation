@@ -21,14 +21,26 @@ class Task:
         self.late = False
         self.task_finished = False
 
-    def run(self, ins) -> int:
+    def run(self, ins):
         '''
         Runs the task, returns 1 if the task hasn't finished and -n if it has finished.
         n is the amount of instructions that are left in the current tick
         '''
         self.length_real -= ins
         self.length_plan -= ins
-        return self.length_real if self.length_real < 0  else 1
+
+        self.task_finished = False if self.length_real > 0  else True
+
+    def task_finished(self):
+        return self.task_finished
+
+    def get_overdone_instructions(self):
+        """
+        If a task has finished, it has to return the amount of instructions it has overdone so those can be added to another task
+        """
+
+        assert self.length_real <= 0
+        return -(self.length_real)
 
     def __str__(self):
         return f'(process: {self.process_id}, id: {self.task_id}, plan_len: {self.length_plan}, real_len:{self.length_real})'

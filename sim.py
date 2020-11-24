@@ -8,8 +8,8 @@ import plan
 import process
 import task
 import process_runner
+import thresholder
 
-# TODO: Visualizte thresholds
 # TODO: lateness in time vs lateness in instructions
 # BUG: Task_id generation is completely fucked; task 0-n on p0, n+1-m on p1,...
 # TODO: PLAN: Plan is getting reversed, so short processes start late
@@ -32,7 +32,7 @@ ANCHOR = IPS
 RESCHEDULE_TIME = IPS
 MAX_BUFF_USAGE = 0.2
 TICKS_OFF = 10
-MAX_TASK_DEVIAION = 2.0 # 200%
+MAX_TASK_DEVIAION = INS_PER_TICK * 10 #
 DEADLINE = 1.1 # total time * DEADLINE = Time to be finished
 MAX_TASK_OVERSTEP = 20
 
@@ -93,13 +93,14 @@ if __name__ == '__main__':
     process.ipt = INS_PER_TICK
     process_runner.ipt = INS_PER_TICK
     process.load = LOAD
-    process.log = LOG
     process_runner.log = LOG
     process.hz = HZ
+    thresholder.log = LOG
+    process_runner.log = False
     process.max_buff_usg = MAX_BUFF_USAGE
     process.ticks_off = TICKS_OFF
-    process.reschedule_time = RESCHEDULE_TIME
-    process.max_task_deviation = MAX_TASK_DEVIAION
+    thresholder.reschedule_time = RESCHEDULE_TIME
+    thresholder.max_task_deviation = MAX_TASK_DEVIAION
     process.deadline = DEADLINE
     process.max_task_overstep = MAX_TASK_OVERSTEP * INS_PER_TICK
     run_sim()
