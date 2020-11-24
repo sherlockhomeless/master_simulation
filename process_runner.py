@@ -1,17 +1,22 @@
 from task import Task
-
+from tracking import Tracker
+from plan import Plan
 ipt = None # instructions per tick
 
 class ProcessRunner:
-    def __init__(self, plan, processes, tick_log="logs/tick.log"):
+    def __init__(self, plan, tick_log="logs/tick.log"):
+        assert type(plan) is Plan
+        print("######",plan.processes)
+
         global ipt
         global log
         self.ipt = ipt
-        self.plan = plan
-        self.processes = processes
-        self.stress = 0
-        self.cur_task = plan[0]
-        self.cur_process = processes[self.cur_task.process_id]
+        self.plan = plan.task_list
+        self.processes = plan.processes
+        self.number_processes = len(self.processes)
+        self.tracking = Tracker(self.number_processes)
+        self.cur_task = self.plan[0]
+        self.cur_process = self.processes[self.cur_task.process_id]
         self.tick = 0
         self.finished_tasks = 0
         if log is True:
@@ -53,12 +58,32 @@ class ProcessRunner:
         #TODO: RUN instructions on process with exact amount of actual done instructions
 
     def preempt_current_process(self):
-        def ## TODO: IMPLEMENT INTERNE METHODEN
+        """
+        preempts the currently running task, inserts the remaining part where the next task of the process would start and starts the next process
+        """
+        insert_index = None
+        next_task_index = 1
+        next_task = plan[next_task_index]
+        # we look for a slot in the plan that either is assigned to the same process id or is free (=> -1)
+        while next_task.process_id != self.cur_task.process_id or next_task.process_id != -1:
+            next_task_index += 1
+            try:
+                next_task = plan[next_task_index]
+            except IndexError:
+                print("task was last task")
 
-        pass #TODO: Implement
+        self.plan.insert(next_task_index, self.cur_task)
+        self.plan = self.plan[1:]
+        self.cur_task = self.plan[0]
+
 
     def singal_prediction_failure(self):
-        pass #TODO: Implement
+        """
+        Should signal to the VRM that there is an significant failure with the prediction of the prediction model.
+        In this simulation this step is kept very simple
+        """
+
+
 
     def pick_next_task(self):
         self.plan = self.plan[1:]

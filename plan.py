@@ -1,12 +1,17 @@
 from random import randint
 from copy import deepcopy
 from task import Task
-from typing import List, Set, Dict, Tuple, Optional
+from process import Process
+from typing import List, Set, Dict, Tuple
 
 
 class Plan:
-    def __init__(self, processes: Tuple[int, int], task_list: List[Task]):
-        self.process_info = processes # list of tuples [(task_list_p0, buffer_p0, deadline_p0),(task_list_p1, buffer_p1, deadline_p0),...]
+    def __init__(self, task_list: List[Task], processes: List[Process]):
+        assert type(processes) is list
+        print(type(processes[0]))
+        assert type(processes[0]) is Process
+
+        self.processes= processes
         self.task_list = task_list # [task0,]
         self.number_tasks_per_process = self.get_number_tasks() # last number is amount of free slots
 
@@ -67,8 +72,7 @@ class Plan:
         # create plan data types
         processes = []
         for i in range(len(process_length)):
-            processes.append((tasks_per_process[i], int(buffer_list[i]), deadlines[i]))
-
+            processes.append(Process(tasks_per_process[i], int(buffer_list[i]), deadlines[i]))
 
 
         assert len(processes) == len(process_length)
@@ -79,7 +83,7 @@ class Plan:
                 for t in plan:
                     f.write(str(t)+'\n')
         print(f'plan with {len(plan)} tasks created')
-        return Plan(processes, plan)
+        return Plan(plan, processes)
 
     @staticmethod
     def generate_realistic_plan(processes: List[List[Task]], sum_tasks: int) -> List[Task]:
@@ -140,9 +144,12 @@ class Plan:
 
 
     def get_number_tasks(self) -> list:
+        """
+        Returns the number of tasks per Process.
+        """
         lenghts = []
-        for process in self.process_info:
-            lenghts.append(process[0])
+        for process in self.processes:
+            lenghts.append(len(process))
         lenghts.append(0)
         for el in self.task_list:
             if el.task_id == -1:

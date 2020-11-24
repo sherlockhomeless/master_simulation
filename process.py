@@ -1,3 +1,4 @@
+from typing import List
 from task import Task
 
 ipt = None # instructions per tick
@@ -13,7 +14,7 @@ max_task_overstep = None # depending on the general lateness on the node, this v
 
 # --- CLASS ---
 class Process:
-    def __init__(self, tasks: Task, buffer: int, deadline: int):
+    def __init__(self, tasks: List[Task], buffer: int, deadline: int):
         """
         Representation of a process on a node.
         Params:
@@ -134,6 +135,9 @@ class Process:
 
     def __del__(self):
         self.log_thresh.close()
+
+    def __len__(self):
+        return len(self.tasks_plan)
 
     def update_stress(self, change: int):
         pass # TODO: implement; change max_task_overstep

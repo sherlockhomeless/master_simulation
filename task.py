@@ -1,8 +1,6 @@
 from random import randint
 import numpy as np
 
-
-
 sigma = None
 
 class Task:
@@ -10,10 +8,14 @@ class Task:
     Representation of a task of a process/job.
     The real length is determined by a random variable
     """
-    def __init__(self, length, process_id, task_id):
+    def __init__(self, length_plan, process_id, task_id, length_real=None):
         global sigma
-        self.length_plan = int(length) # instructions left to process
-        self.length_real = int(np.random.normal(length, length/100*sigma, 1))
+        assert type(length_plan) is int
+        self.length_plan = length_plan # instructions left to process
+        if length_real is None:
+            self.length_real = int(np.random.normal(length_plan, length_plan/100*sigma, 1))
+        else:
+            self.length_real = length_real
         self.process_id = process_id
         self.task_id = task_id
         self.late = False

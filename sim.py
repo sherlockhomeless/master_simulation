@@ -56,17 +56,15 @@ LOAD = 1 #systemload
 def run_sim():
     plan = Plan.generate_plan(NUMBER_PROCESSES,  PROCESS_MIN_LEN, PROCESS_MAX_LEN, TASK_MIN_LEN, TASK_MAX_LEN, BUFFER_MIN, BUFFER_MAX, FREE_TIME, file_path=WRITE_PLAN)
     task_lists_for_processes = sort_plan(plan)
-    for i in range(len(task_lists_for_processes)):
-        plan.process_info[i] = (task_lists_for_processes[i], plan.process_info[i][1], plan.process_info[2] )
-    processes = create_processes(plan.process_info)
-    runner = create_process_runner(plan.task_list, processes)
+
+    runner = ProcessRunner(plan)
     runner.write_plan_to_file(WRITE_PLAN)
     while not runner.has_finished() and not JUST_GENERATE_PLAN:
         runner.run_tick()
 
 
 
-def create_processes(process_info: Tuple[List[Task], int, int]):
+def create_processes(process_info: List[Task],buffer: int, deadline: int) -> List[Process]:
     '''
     Creates processes according to the configuration given above.
     Process-Info is list of tuples [(<task-list>,buffer),...]
@@ -76,12 +74,13 @@ def create_processes(process_info: Tuple[List[Task], int, int]):
         processes.append(Process(p[0], p[1], p[2])) # tasklist, buffer, deadline
     return processes
 
-def create_process_runner(task_list, processes):
-    print("simulation initialized")
-    return ProcessRunner(task_list, processes)
-
 def sort_plan(plan: 'Plan') -> list:
-    task_lists = [[] for p in range(len(plan.process_info))]
+    """
+    Sorts all tasks of a long list of task into a list for each process.
+    Input: [task0,task1,task2,...]
+    Output:[[task0, task2], [task1,...],...] where the index is the process id
+    """
+    task_lists = [[] for p in range(len(plan.processes))]
     for t in plan.task_list:
         if t.process_id == -1:
             continue
