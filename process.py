@@ -63,22 +63,20 @@ class Process:
 
         if task_finished() is True:
                 move_to_next_task()
-        self.instructions_done += ins
-        self.instructions_left -= ins
 
 
-    def update_lateness(self):
-        # task is on time
-        if self.cur_task.length_plan > 0:
-            return
-        # tasks turns late
-        elif self.cur_task.length_plan < 0 and self.cur_task.late is False:
-            self.lateness_task += self.cur_task.length_plan
-            self.lateness_process += self.cur_task.length_plan
-            self.cur_task.late = True
-        elif self.cur_task.length_plan < 0 and self.cur_task.late is True:
-            self.lateness_task += self.ipt
-            self.lateness_process += self.ipt
+    # def update_lateness(self):
+    #     # task is on time
+    #     if self.cur_task.length_plan > 0:
+    #         return
+    #     # tasks turns late
+    #     elif self.cur_task.length_plan < 0 and self.cur_task.late is False:
+    #         self.lateness_task += self.cur_task.length_plan
+    #         self.lateness_process += self.cur_task.length_plan
+    #         self.cur_task.late = True
+    #     elif self.cur_task.length_plan < 0 and self.cur_task.late is True:
+    #         self.lateness_task += self.ipt
+    #         self.lateness_process += self.ipt
 
 
     def __len__(self):

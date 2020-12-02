@@ -57,7 +57,7 @@ def run_sim():
     plan = Plan.generate_plan(NUMBER_PROCESSES,  PROCESS_MIN_LEN, PROCESS_MAX_LEN, TASK_MIN_LEN, TASK_MAX_LEN, BUFFER_MIN, BUFFER_MAX, FREE_TIME, file_path=WRITE_PLAN)
     task_lists_for_processes = sort_plan(plan)
 
-    runner = ProcessRunner(plan)
+    runner = ProcessRunner(plan, ipt=INS_PER_TICK, log=LOG)
     runner.write_plan_to_file(WRITE_PLAN)
     while not runner.has_finished() and not JUST_GENERATE_PLAN:
         runner.run_tick()
@@ -91,14 +91,12 @@ def sort_plan(plan: 'Plan') -> list:
 if __name__ == '__main__':
     task.sigma = SIGMA
     process.ipt = INS_PER_TICK
-    process_runner.ipt = INS_PER_TICK
     process.load = LOAD
-    process_runner.log = LOG
     process.hz = HZ
-    thresholder.log = LOG
-    process_runner.log = False
     process.max_buff_usg = MAX_BUFF_USAGE
     process.ticks_off = TICKS_OFF
+    process_runner.log = LOG
+    thresholder.log = LOG
     thresholder.reschedule_time = RESCHEDULE_TIME
     thresholder.max_task_deviation = MAX_TASK_DEVIAION
     process.deadline = DEADLINE

@@ -1,25 +1,24 @@
+from typing import List
 from task import Task
+from process import Process
 from thresholder import Threshold
 from tracking import Tracker
 from vrm import VRM
 from plan import Plan
 
-ipt = None # instructions per tick
-log = None
+log = False
 
 class ProcessRunner:
-    def __init__(self, plan, tick_log="logs/tick.log"):
+    def __init__(self, plan, tick_log="logs/tick.log", ipt=1, log=False):
         assert type(plan) is Plan
 
-        global ipt
-        global log
-        self.ipt = ipt
-        self.plan = plan.task_list
-        self.processes = plan.processes
-        self.number_processes = len(self.processes)
+        self.ipt: int = ipt
+        self.plan: List[Task] = plan.task_list
+        self.processes: List[Process] = plan.processes
+        self.number_processes:int = len(self.processes)
         self.number_tasks = plan.number_all_tasks
         self.tracking = Tracker(self.number_processes, self.number_tasks, self.processes)
-        self.thresholds = [[Threshold(p)] for p in self.processes]
+        self.thresholds = [Threshold(p) for p in self.processes]
         self.cur_task = self.plan[0]
         self.cur_process = self.processes[self.cur_task.process_id]
         self.cur_process_id = self.cur_process.process_id
@@ -41,17 +40,30 @@ class ProcessRunner:
         assert self.cur_task.length_real > 0
         cur_task = self.cur_task
         cur_process = self.cur_process
+        ins = self.ipt
+        cur_task.run(ins)
 
-        cur_task.run(self.ipt)
+        if cur_task.finshed_early:
+            early_instructions = cur_task.get_early_instructions()
+            self.tracking.add_lateness_to_task(cur_task.task_id, -1* early_instructions)
+            self.tracking.add_lateness_to_process(cur_process.process_id, -1* early_instructions)
+            self.tracking.update_overall_lateness(-1*early_instructions)
+            self.tracking.update_buffer(cur_process.process_id, -1*early_instructions)
+
+        if cur_task.is_late:
+            late_instructions = cur_task.get_late_instructions(ins)
+            self.tracking.add_lateness_to_task(cur_task.task_id, late_instructions)
+            self.tracking.add_lateness_to_process(cur_process.process_id, late_instructions)
+            self.tracking.update_buffer(cur_process.process_id, late_instructions)
 
         if cur_task.task_finished:
             ipt_left = cur_task.get_overdone_instructions()
-            cur_process.run_task(cur_task.task_id, self.ipt - ipt_left)
+            cur_process.run_task(cur_task.task_id, ins - ipt_left)
             self.pick_next_task()
             cur_task = self.cur_task
             cur_task.run(ipt_left)
-        else:
-            "HIER WEITER, MODEL ÜBERLEGEN FÜR ABLAUF VON TICKS"
+
+
 
         if log:
             self.log_thresh()
@@ -100,9 +112,13 @@ class ProcessRunner:
             self.run_tick()
 
     def update_thresholds(self):
-        cur_thresh = self.thresholds[self.cur_process]
-        cur_thresh.update_lateness()
-        cur_thresh.update_thresholds()
+        cur_pid = self.cur_process.process_id
+        cur_task = self.cur_task
+
+        cur_thresh = self.thresholds[cur_pid]
+        left = self.tracking.instructions_left_per_process(cur_pid)
+        planed = self.tracking.get_instrcutions_planned_per_p(cur_pid)
+        cur_thresh.update_thresholds(instructions_left=left, instructions_planned=planed, cur_task=cur_task)
 
     def has_finished(self) -> bool:
         return False if len(self.plan) > 0 else True
