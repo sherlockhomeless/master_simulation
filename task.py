@@ -2,6 +2,7 @@ from random import randint
 import numpy as np
 
 sigma = None
+ips = None
 
 class Task:
     """
@@ -9,8 +10,8 @@ class Task:
     The real length is determined by a random variable
     """
     def __init__(self, length_plan, process_id, task_id, length_real=None):
-        global sigma
         assert type(length_plan) is int
+        assert length_plan > ips
 
         self.length_plan_unchanged = length_plan
         self.length_plan = length_plan # decreases

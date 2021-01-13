@@ -8,7 +8,6 @@ from typing import List, Set, Dict, Tuple
 class Plan:
     def __init__(self, task_list: List[Task], processes: List[Process]):
         assert type(processes) is list
-        print(type(processes[0]))
         assert type(processes[0]) is Process
 
         self.processes = processes # [Process, Process]
@@ -33,25 +32,16 @@ class Plan:
             print(f'[PLAN] Process {p} has {process_length[p]} tasks')
 
 
-        # create tasks for each process
-        tasks_per_process = [[] for x in range(num_processes)] # [[taks0 of p0, task1 of p0],[task2 of p1]...]
-        cur_id = 0
-        sum_process_length = [] # list of ints describing sum of instructions per process
-        for cur_process in range(num_processes):
-            for i in range(process_length[cur_process]):
-                tasks_per_process[cur_process].append(Task(randint(min_len_task,max_len_task), cur_process, cur_id))
-                cur_id += 1
-            sum_process_length.append(sum([x.length_plan for x in tasks_per_process[cur_process]]))
+        tasks_per_process = Plan.generate_tasks_for_processes(list(process_length), min_len_task, max_len_task)
 
         # create plan out of tasks for each process
         plan = []
         sum_tasks = 0
         for p in tasks_per_process:
             sum_tasks += len(p)
-        print(f'[PLAN] generated {sum_tasks} tasks')
+        print(f'[PLAN] generated {sum_tasks} actual tasks')
         all_pro_and_tasks = deepcopy(tasks_per_process)
         free_slots = Plan.generate_free_slots(free_time, sum_tasks, min_len_task, max_len_task)
-        sum_tasks += len(free_slots)
         all_pro_and_tasks.append(free_slots)
 
         plan = Plan.generate_realistic_plan(all_pro_and_tasks, sum_tasks)
@@ -65,7 +55,7 @@ class Plan:
             buffer_list.append(sum_instructions*(randint(min_buffer,max_buffer)/100))
 
         # calc deadlines
-        plan.reverse() # so ids are increasing
+        #plan.reverse() # so ids are increasing
         last_tasks_of_process_finish = Plan.find_last_task_ending(plan, num_processes)
         deadlines = []
         for p, last_task_finish in enumerate(last_tasks_of_process_finish):
@@ -78,40 +68,44 @@ class Plan:
 
 
         assert len(processes) == len(process_length)
-        assert len(plan) == sum_tasks + len(free_slots)
+        try:
+            assert len(plan) == sum_tasks + len(free_slots)
+        except Exception as e:
+            print(len(plan), sum_tasks, len(free_slots))
+            assert False
 
         if file_path is not None:
             with open(file_path, 'w') as f:
                 for t in plan:
                     f.write(str(t)+'\n')
+
         print(f'plan with {len(plan)} tasks created')
         return Plan(plan, processes)
 
     @staticmethod
     def generate_realistic_plan(processes: List[List[Task]], sum_tasks: int) -> List[Task]:
         """
-        Mixes up the plan in such a way that there is some kind of meaningful switching between tasks for different processes/jobs
+        Mixes up the plan in such a way that there is some kind of meaningful switching between tasks for different processes/jobs. The Task-List on the last index is for free slots
         """
         num_processes = len(processes)
         cur_id = 0
         plan = []
         last_picked = None
 
-        for task_id in range(sum_tasks):
-            new_task = None
-
-            while new_task is None:
-                process_to_pick_from = randint(0, num_processes) -1
-                try:
-                    if process_to_pick_from == last_picked and num_processes > 0:
-                        continue
-                    else:
-                        new_task = processes[process_to_pick_from].pop()
-                        last_picked = process_to_pick_from
-                except IndexError:
-                    processes = [x for x in processes if x]
-                    num_processes -= 1
-            plan.append(new_task)
+        for cur_task_id in range(sum_tasks):
+            found = False
+            for p in processes:
+                if found is True:
+                    break
+                for t in p:
+                    if t.task_id == cur_task_id:
+                        plan.append(t)
+                        found = True
+                        break
+        # now we got a plan with increasing task-ids, now insert free slots
+        for free_slot in processes[-1]:
+            insert_index = randint(1, len(plan)-1)
+            plan.insert(insert_index, free_slot)
         return plan
 
 
@@ -127,6 +121,7 @@ class Plan:
             length = randint(min_len, max_len)
             new_task = Task(length, PROCESS_TASK_ID, PROCESS_TASK_ID)
             free_slots.append(new_task)
+        print(f'[PLAN] have {free_slots_num} free slots')
         return free_slots
 
 
@@ -144,6 +139,36 @@ class Plan:
             latest_task[task.process_id] = instr_counter
         return latest_task
 
+    @staticmethod
+    def generate_tasks_for_processes(length_per_process: List[int], min_len, max_len):
+        """
+        Takes a List of integers that describe the tasks per process (index == process_id) and generates a list of tasks matching the length given by the integer
+        """
+
+        num_processes = len(length_per_process)
+        tasks_per_process = [[] for x in range(num_processes)]
+        cur_id = 0
+        last_process_id = -1
+        next_task_process_id = 0
+        while(length_per_process != []):
+            cur_length = len(length_per_process)
+            # --- pick next process-id
+            while(next_task_process_id == last_process_id):
+                next_task_process_id = randint(0,cur_length-1)
+                if len(length_per_process) == 1:
+                    next_task_process_id = 0
+                    break
+            # --- pick next task
+            tasks_per_process[next_task_process_id].append(Task(randint(min_len,max_len), next_task_process_id, cur_id))
+            # --- setup for next run
+            cur_id += 1
+            length_per_process[next_task_process_id] -= 1
+            if length_per_process[next_task_process_id] == 0:
+                length_per_process.remove(0)
+            last_process_id = next_task_process_id
+
+        assert len(length_per_process) == 0
+        return tasks_per_process
 
     def get_number_tasks_per_p(self) -> list:
         """
@@ -162,7 +187,7 @@ class Plan:
     def get_number_all_tasks(self) -> int:
         counter = 0
         for task in self.task_list:
-            if task.process_id != 1:
+            if task.process_id != -1:
                 counter += 1
         return counter
 

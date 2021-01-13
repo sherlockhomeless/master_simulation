@@ -25,11 +25,13 @@ class Tracker:
         self.instructions_done_all = 0
         self.stress = 0
         self.time_instructions = 0 # keeps time of the instructions passed
+        self.cur_tick = 0
 
     def run_tick(self, ins: int):
         self.time_instructions += ins
         self.instructions_done_all += ins
         self.instructions_planned_left -= ins
+        self.cur_tick += 1
 
     def update_lateness(self, process_id):
         # TODO: REQUIRED?!? Prob no
@@ -39,7 +41,13 @@ class Tracker:
         self.time_instructions += ins
 
     def add_lateness_to_task(self, task_id, ins):
-        self.lateness_per_task[task_id] += ins
+        try:
+            self.lateness_per_task[task_id] += ins
+        except IndexError:
+            print("index_error_id:", task_id)
+            print("length lateness_per_pask", len(self.lateness_per_task))
+            assert False
+
 
     def add_lateness_to_process(self, process_id, ins):
         self.process_latenesses[process_id] += ins
@@ -75,3 +83,7 @@ class Tracker:
 
     def get_instrcutions_planned_per_p(self, id):
         return self.instructions_planned_per_process[id]
+
+    def get_current_tick(self) -> int:
+        # returns current tick of simulation as increments of start value 0
+        return self.cur_tick

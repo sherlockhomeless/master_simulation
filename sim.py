@@ -32,7 +32,8 @@ ANCHOR = IPS
 RESCHEDULE_TIME = IPS
 MAX_BUFF_USAGE = 0.2
 TICKS_OFF = 10
-MAX_TASK_DEVIAION = INS_PER_TICK * 10 #
+MAX_TASK_DEVIAION = INS_PER_TICK * 10
+MAX_RELATIVE_DEVEATION = 1.3
 DEADLINE = 1.1 # total time * DEADLINE = Time to be finished
 MAX_TASK_OVERSTEP = 20
 
@@ -41,12 +42,11 @@ FREE_TIME = 10
 
 NUMBER_PROCESSES = 3
 
-TASK_MIN_LEN = IPS
-TASK_MAX_LEN = IPS * 10
+TASK_MIN_LEN = INS_PER_TICK
+TASK_MAX_LEN = INS_PER_TICK * 1000
 
-PROCESS_MIN_LEN = 10**1
-PROCESS_MAX_LEN = 10**2
-
+PROCESS_MIN_LEN = 10
+PROCESS_MAX_LEN = 10
 # % of whole Tasks that is added as buffer
 BUFFER_MIN = 2
 BUFFER_MAX = 10
@@ -90,6 +90,7 @@ def sort_plan(plan: 'Plan') -> list:
 
 if __name__ == '__main__':
     task.sigma = SIGMA
+    task.ips = INS_PER_TICK
     process.ipt = INS_PER_TICK
     process.load = LOAD
     process.hz = HZ
@@ -99,6 +100,7 @@ if __name__ == '__main__':
     thresholder.log = LOG
     thresholder.reschedule_time = RESCHEDULE_TIME
     thresholder.max_task_deviation = MAX_TASK_DEVIAION
+    thresholder.max_relative_deviation = MAX_RELATIVE_DEVEATION
     process.deadline = DEADLINE
     process.max_task_overstep = MAX_TASK_OVERSTEP * INS_PER_TICK
     run_sim()

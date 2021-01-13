@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-
 from os import listdir
+from typing import List
 import matplotlib.pyplot as plt
 
-from sim import IPS
+from sim import INS_PER_TICK
 
 """
 Thrshold logging done in files of format thresh_[PROCESS_ID].log
@@ -22,7 +22,7 @@ THRESH_CHRON = 'thresh_cron.log' # chronological change of t1, t2, mt2
 def run_vis():
 
     # visualize threshold development for all processes
-    log_files = find_threshold_logs("thresh")
+    log_files = find_threshold_logs("thresh_")
     thresholds = parse_logs(log_files)
     statistics = do_stat(thresholds)
     vis_all_processes(thresholds)
@@ -34,9 +34,53 @@ def run_vis():
     vis_all_processes(thresholds, value_type='pure')
     vis_all_processes(thresholds, thresh_type='t1', value_type='pure')
 
+    log_files = find_threshold_logs("per_tick_thresh_sum")
+    thresholds = parse_logs(log_files)
+    vis_chronological(thresholds[0])
+
+    log_files = find_threshold_logs("per_tick_thresh_pure")
+    thresholds = parse_logs(log_files)
+    vis_chronological(thresholds[0], value_type='pure')
+
+def vis_chronological(threshs: List["log_struct"], value_type='sum'):
+    """
+    Visualization of all thresholds per chronologically increasing tick. Threshs is a List of log_structs
+    """
+    t = list(range(len(threshs))) # gets time axes
+    # --- fill lists with corresponding data ---
+    graph_labels = ['t1', 't2']
+    t1_all = []
+    t2_all = []
+    mt2_all = []
+    last = None
+    #set_trace()
+    for thresh in threshs:
+        if thresh.task_id == '-1':
+            t1_all.append(t1_all[-1])
+            t2_all.append(t2_all[-1])
+            mt2_all.append(mt2_all[-1])
+            continue
+        t1_all.append(thresh.t1)
+        t2_all.append(thresh.t2)
+        mt2_all.append(thresh.mt2)
+
+    # --- Plot ---
+    for i, graph in enumerate((t1_all, t2_all)):
+        plt.plot(t, graph, label=graph_labels[i])
+
+    plt.xlabel = 't'
+    plt.ylabel = 'INS_PER_TICK'
+    plt.legend()
+    print(f'ploting chronological threshold')
+    save_fig(f"thresh_chrono_{value_type}")
+
+
+
+
 def vis_all_processes(threshs, thresh_type='t2', value_type='sum'):
     """
-    Visualize the development of Threshold 2 for all processes
+    Visualize the development of Thresholds for all processes
+    valuetype determines if visualization eather shows the threshold including the planed instructions (sum) or just the threshods
     """
     t = list(range(max(len(i) for i in threshs)))
     functions = []
@@ -49,13 +93,13 @@ def vis_all_processes(threshs, thresh_type='t2', value_type='sum'):
             functions[-1].append(0)
 
     for i, t2 in enumerate(functions):
-        print(f'ploting graph {i}')
+        print(f'ploting graph {i} (t-type: {thresh_type}, value_type: {value_type})')
         plt.plot(t, t2, label = f'process {i}')
 
 
     # Setting the figure size
     plt.xlabel = 't'
-    plt.ylabel = 'ips'
+    plt.ylabel = 'INS_PER_TICK'
     plt.legend()
     save_fig(f"all_processes_{thresh_type}_{value_type}")
 
@@ -85,6 +129,8 @@ def parse_logs(log_files) -> list:
         new_log = []
         with open(log, 'r') as f:
             for line in f:
+                if line[0] == '#' or 'None' in line:
+                    continue
                 line = line.replace('\n', '')
                 parts = line.split(' ')
                 new_log.append(log_struct(parts[0], parts[1], parts[2], parts[3]))
@@ -102,26 +148,26 @@ def find_threshold_logs(pattern: str) -> list:
         if pattern in f and ".log" in f:
             logs.append(f'{LOG_FOLDER}/{f}')
     logs.sort()
-    print(logs)
+    print(f'[FIND] Found logs {logs} for pattern {pattern}')
     return logs
 
 class log_struct:
     def __init__(self, taskid, t1, t2, mt2):
+        """
+        Simple data structure that stores threshold information. Pure instructions are converted to a
+        """
         self.task_id = taskid
-        self.t1 = int(t1)/IPS
-        self.t2 = int(t2)/IPS
-        self.mt2 = int(mt2)/IPS
+        self.t1 = int(int(t1)/INS_PER_TICK)
+        self.t2 = int(int(t2)/INS_PER_TICK)
+        self.mt2 = int(int(mt2)/INS_PER_TICK)
+
 
 
     def __str__(self) -> str:
-        return f'[{self.t1}, {self.t2}, {self.mt2}]'
+        return f'[{self.task_id}{self.t1}, {self.t2}, {self.mt2}]'
 
     def __repr__(self) -> str:
         return self.__str__()
-
-
-
-
 
 
 

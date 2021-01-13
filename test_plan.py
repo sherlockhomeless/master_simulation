@@ -1,6 +1,7 @@
 import unittest
 from plan import Plan
 from task import Task
+import task
 from random import randint
 from test_process import generate_test_process, generate_test_task
 
@@ -25,5 +26,17 @@ def generate_test_plan() -> Plan:
 
 class TestPlan(unittest.TestCase):
 
+    task.sigma = 1.1
     def test_plan_generation(self):
         generate_test_plan()
+
+    def test_generate_tasks_for_processes(self):
+        tasks_pp = [10,20,30]
+        sum_tasks = sum(tasks_pp)
+        process_tasks = Plan.generate_tasks_for_processes(tasks_pp, 10, 100)
+        num_all_tasks = 0
+        for tasks in process_tasks:
+             num_all_tasks += len(tasks)
+
+
+        self.assertEqual(sum_tasks, num_all_tasks)

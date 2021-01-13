@@ -6,10 +6,12 @@ from tracking import Tracker
 from vrm import VRM
 from plan import Plan
 
+from pudb import set_trace
+
 log = False
 
 class ProcessRunner:
-    def __init__(self, plan, tick_log="logs/tick.log", ipt=1, log=False):
+    def __init__(self, plan, tick_log="logs/tick.log", thresh_log="logs/per_tick_thresh_sum.log", thresh_log_pure="logs/per_tick_thresh_pure.log", ipt=1, log=False):
         assert type(plan) is Plan
 
         self.ipt: int = ipt
@@ -26,7 +28,9 @@ class ProcessRunner:
         self.vrm = VRM(self.plan)
 
         if log is True:
-            self.thresh_log = open(tick_log, 'w')
+            self.tick_log = open(tick_log, 'w')
+            self.log_thresh = open(thresh_log, 'w')
+            self.log_thresh_pure = open(thresh_log_pure, 'w')
         else:
             self.thresh_log = open('/dev/null', 'w')
 
@@ -55,6 +59,7 @@ class ProcessRunner:
             self.tracking.add_lateness_to_task(cur_task.task_id, late_instructions)
             self.tracking.add_lateness_to_process(cur_process.process_id, late_instructions)
             self.tracking.update_buffer(cur_process.process_id, late_instructions)
+            # continue here
 
         if cur_task.task_finished:
             ipt_left = cur_task.get_overdone_instructions()
@@ -62,16 +67,15 @@ class ProcessRunner:
             self.pick_next_task()
             cur_task = self.cur_task
             cur_task.run(ipt_left)
-
-
-
-        if log:
-            self.log_thresh()
-            self.log_tick()
+            self.cur_process_id = cur_task.process_id
+            print(f'[PROCESS_RUNNER] starting next task {self.cur_task.task_id}')
 
         self.tracking.run_tick(self.ipt)
         self.update_thresholds()
 
+        if log:
+            self.write_thresh_log()
+            self.write_tick_log()
         #TODO: RUN instructions on process with exact amount of actual done instructions
 
     def preempt_current_process(self):
@@ -119,6 +123,8 @@ class ProcessRunner:
         left = self.tracking.instructions_left_per_process(cur_pid)
         planed = self.tracking.get_instrcutions_planned_per_p(cur_pid)
         cur_thresh.update_thresholds(instructions_left=left, instructions_planned=planed, cur_task=cur_task)
+        if log:
+            self.write_thresh_log()
 
     def has_finished(self) -> bool:
         return False if len(self.plan) > 0 else True
@@ -142,20 +148,20 @@ class ProcessRunner:
             for task in self.plan:
                 f.write(f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
 
-    def log_thresh(self):
-        if log is False:
-            return
-        cur_p = self.cur_process.process_id
-        cur_t = self.thresholds[cur_p]
-        self.thresh_log.write(f'{self.cur_task.task_id} {cur_t["t1"]} {cur_t["t2"]} {cur_t["t_minus2"]}\n')
+    def write_thresh_log(self):
+        # format: cur_jobid cur_process_id cur_task_id cur_t1 cur_t2 cur_-t2
+        cur_thresh = self.thresholds[self.cur_process_id]
+        if self.cur_task.task_id != -1:
+            self.log_thresh.write(f'{self.cur_task.task_id} {cur_thresh["t1"]} {cur_thresh["t2"]} {cur_thresh["t_minus2"]}\n')
+            self.log_thresh_pure.write(f'{self.cur_task.task_id} {cur_thresh["t1_pure"]} {cur_thresh["t2_pure"]} {cur_thresh["t_minus2_pure"]}\n')
 
+        else:
+            self.log_thresh.write(f'-1 0 0 0\n') # empty space
 
-    def log_tick(self):
-        self.thresh_log.write(str(self.cur_task) + '\n')
-
-
+    def write_tick_log(self):
+        self.tick_log.write(f'{str(self.cur_task)} {self.tracking.get_current_tick()} \n')
 
     def __del__(self):
         if log is False:
             return
-        self.thresh_log.close()
+        self.tick_log.close()
