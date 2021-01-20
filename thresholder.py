@@ -4,10 +4,13 @@ from process import Process
 from task import Task
 
 log = False
-reschedule_time = None # time it takes to receive a new plan
-max_task_deviation = None # Max. Insrtructions a Task is allowed to be off
+reschedule_time = None  # time it takes to receive a new plan
+max_task_deviation = None  # Max. Insrtructions a Task is allowed to be off
 max_relative_deviation = None
-
+ipt = None
+cap_lateness = None
+consumable_buffer = None
+spacer_constant = None
 
 
 class Threshold:
@@ -16,44 +19,54 @@ class Threshold:
         self.process = process
         self.process_id = process.process_id
         self.reschedule_time = reschedule_time
-        self.max_task_deviation = max_task_deviation # counted in number of instructions off globaly max off
-        self.max_relative_deviation = max_relative_deviation # given in % of task planned length
-
+        self.ipt = ipt
+        # how much is a task allowed to deviate from it's plan, eg. 120% => 1.2
+        self.CAP_LATENESS = cap_lateness
+        # how much of the buffer is available for usage
+        self.CONSUMEABLE_BUFFER = consumable_buffer
+        # factor that determines how much bigger t2 has to be then t1
+        self.SPACER_CONSTANT = spacer_constant
+        # counted in number of instructions off globaly max off
+        self.max_task_deviation = max_task_deviation
+        # given in % of task planned length
+        self.max_relative_deviation = max_relative_deviation
+        # [TODO] Include Load
+        self.load = 1
+        # [CHECK] Total available buffer in instructions
         self.buffer = process.buffer
         self.deadline = process.deadline
         self.reschedule_time = reschedule_time
-        self.threshold_state = 0 # holds the current state of the threshold
+        self.threshold_state = 0  # holds the current state of the threshold
 
         self.t1 = None
         self.t2 = None
         self.t_minus2 = None
 
         self.thresholds = {
-        "t1": self.t1,
-        "t2": self.t2,
-        "t_minus2": self.t_minus2,
-        "t1_pure": 0,
-        "t2_pure": 0,
-        "t_minus2_pure": 0
+            "t1": self.t1,
+            "t2": self.t2,
+            "t_minus2": self.t_minus2,
+            "t1_pure": 0,
+            "t2_pure": 0,
+            "t_minus2_pure": 0
         }
 
         # --- admin ---
         self.log = log
         self.thresh_flag = None
         self.log_thresh = open(f'logs/thresh_{self.process_id}.log', 'w')
-        self.log_thresh_pure = open(f'logs/pure_{self.process_id}.log', 'w') # logging of the pure instruction amount that is been granted
+        # logging of the pure instruction amount that is been granted
+        self.log_thresh_pure = open(f'logs/pure_{self.process_id}.log', 'w')
 
-
-
-    def update_thresholds(self, instructions_left: int, instructions_planned: int, cur_task: Task, stress=1):
+    def update_thresholds(self, instructions_left: int, instructions_planned: int, cur_task: Task, stress=1, load=1):
         """
         Sets the Thresholds
-        TODO: Include stress calculation
+        [TODO]: Include stress calculation
         """
 
-        buffer_allowence = instructions_left/instructions_planned * self.buffer #* self.load TODO: Include Load
+        usable_buffer = self.calc_usable_buffer(instructions_planned, instructions_left)
         self.t1 = self.calc_t1(cur_task.length_plan_unchanged)
-        self.t2 = self.calc_t2(buffer_allowence)
+        self.t2 = self.calc_t2(usable_buffer, cur_task.length_plan_unchanged)
         self.t_minus2 = self.calc_t_minus(cur_task.length_plan)
 
         try:
@@ -64,13 +77,11 @@ class Threshold:
             set_trace()
         self.update_dict(instructions_planned)
 
-
         if self.log is True:
-            self.log_thresh.write(f'{cur_task.task_id} {self.t1} {self.t2} {self.t_minus2}\n')
-            self.log_thresh_pure.write(f'{cur_task.task_id} {self.t1 - cur_task.length_plan} {self.t2 - cur_task.length_plan} {self.t_minus2}\n')
-
-
-
+            self.log_thresh.write(
+                f'{cur_task.task_id} {self.t1} {self.t2} {self.t_minus2}\n')
+            self.log_thresh_pure.write(
+                f'{cur_task.task_id} {self.t1 - cur_task.length_plan} {self.t2 - cur_task.length_plan} {self.t_minus2}\n')
 
     def calc_t1(self, instructions_planned) -> int:
         '''
@@ -83,33 +94,45 @@ class Threshold:
         max_global_deviation = self.max_task_deviation + instructions_planned
         max_local_deviation = instructions_planned * self.max_relative_deviation
         t1 = int(min(max_global_deviation, max_local_deviation))
-        #print("max_global_deviation") if max_global_deviation < max_local_deviation else print("max_local_deviation")
+        #  print("max_global_deviation") if max_global_deviation < max_local_deviation else print("max_local_deviation")
 
         return t1
 
-    def calc_t2(self, buffer_allowence) -> int:
+    def calc_t2(self, available_buffer, length_plan, stress=0) -> int:
         """
         Triggers PredictionFailure to VRM. Conditions:
         1. Individual Task was extremly off => in current implementation this condition holds if one task takes the amount of two slots of the assigned time
         2. Whole Process is off by significant amount proportional to state of progress
 
-        TODO: static threshhold depending on stress level
+        [TODO] static threshhold depending on stress level
         """
 
-        condition1 = None # TODO
+        t2_with_buffer_cap = self.t1 + stress * self.ipt - self.reschedule_time
+        t2_cap_lateness = self.CAP_LATENESS * length_plan
+        t2 = min(t2_with_buffer_cap, t2_cap_lateness)
+        t2 = int(t2)
 
-        allowence_relative = int(self.t1 + buffer_allowence - self.reschedule_time)
-        condition2 = self.t1 + buffer_allowence - self.reschedule_time
-        assert allowence_relative > 0 and condition2 > 0
-        
-        return min(allowence_relative, condition2)
+        return t2 if t2 > self.t1 else self.t1 * self.SPACER_CONSTANT
 
     def calc_t_minus(self, instructions_planned):
         return int(-1 * self.t2 * 2)
 
-
     def get_thresholds(self) -> dict:
         return self.thresholds
+
+    def calc_usable_buffer(self, instructions_planned, instructions_left):
+        """
+        Calculates the proportion of the buffer that is allowed to be used up
+        """
+        instructions_done = instructions_planned - instructions_left
+        process_completion = instructions_done / instructions_planned
+        available_buffer = self.buffer * self.load * self.CONSUMEABLE_BUFFER
+        usable_buffer = available_buffer * process_completion
+
+        assert usable_buffer < available_buffer
+        assert usable_buffer >= 0  # t2 with 0% completion should just be one of other thresholds
+
+        return int(usable_buffer)
 
     def check_thresholds(self) -> int:
         if self.lateness_task < self.t1:

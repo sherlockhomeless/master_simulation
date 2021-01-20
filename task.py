@@ -4,19 +4,22 @@ import numpy as np
 sigma = None
 ips = None
 
+
 class Task:
     """
     Representation of a task of a process/job.
     The real length is determined by a random variable
     """
+
     def __init__(self, length_plan, process_id, task_id, length_real=None):
         assert type(length_plan) is int
         assert length_plan > ips
 
         self.length_plan_unchanged = length_plan
-        self.length_plan = length_plan # decreases
+        self.length_plan = length_plan  # decreases
         if length_real is None:
-            self.length_real = int(np.random.normal(length_plan, length_plan/100*sigma, 1))
+            self.length_real = int(np.random.normal(
+                length_plan, length_plan/100 * sigma, 1))
         else:
             self.length_real = length_real
         self.process_id = process_id
