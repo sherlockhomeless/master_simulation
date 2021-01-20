@@ -46,6 +46,7 @@ class ProcessRunner:
         cur_task = self.cur_task
         cur_process = self.cur_process
         ins = self.ipt
+        # runs the full set of instructions on the current task
         cur_task.run(ins)
 
         if cur_task.finshed_early:
@@ -81,27 +82,43 @@ class ProcessRunner:
         self.tracking.run_tick(self.ipt)
         self.update_thresholds()
 
+        if cur_task.is_late and self.transgresses_t1():
+            self.preempt_current_process()
+
         if log:
             self.write_thresh_log()
             self.write_tick_log()
 
+    def transgresses_t1(self) -> bool:
+        """
+        cur_task_ins ---- t1 ---- 0 ---- plan_ins
+        determines if cur_task_ins is located such that t1 is transgressed
+        """
+        t1 = -1 * self.thresholds[self.cur_task.process_id].t1
+        cur_lateness = self.cur_task.length_plan
+        return True if t1 > cur_lateness else False
+
     def preempt_current_process(self):
         """
         preempts the currently running task, inserts the remaining part where the next task of the process would start and starts the next process
+        [CHECK] where to change things after preemption?
         """
-        next_task_index = 1
-        next_task = plan[next_task_index]
+        cur_task_id = self.cur_task.task_id
+        cur_process_id = self.cur_task.process_id
+        next_task_index = self.search_task_following(cur_task_id)
+        next_task = self.plan[next_task_index]
         # we look for a slot in the plan that either is assigned to the same process id or is free (=> -1)
         while next_task.process_id != self.cur_task.process_id or next_task.process_id != -1:
-            next_task_index += 1
             try:
-                next_task = plan[next_task_index]
+                next_task_index += 1
+                next_task = self.plan[next_task_index]
             except IndexError:
                 print("task was last task")
 
         self.plan.insert(next_task_index, self.cur_task)
         self.plan = self.plan[1:]
         self.cur_task = self.plan[0]
+        print(f'Task ({cur_process_id},{cur_task_id}) was moved to plan index {next_task_index} before ({self.plan[next_task_index+1].process_id},{self.plan[next_task_index+1].task_id}) ')
 
     def singal_prediction_failure(self):
         """
@@ -110,6 +127,10 @@ class ProcessRunner:
         """
 
     def pick_next_task(self):
+        """
+        Picks the next task
+        ! shortens the plan
+        """
         self.plan = self.plan[1:]
         if len(self.plan) == 0:
             return
@@ -134,6 +155,15 @@ class ProcessRunner:
 
     def has_finished(self) -> bool:
         return False if len(self.plan) > 0 else True
+
+    def search_task_following(self, cur_id) -> int:
+        """
+        Returns the index of the task that is following the task with the given id according to the plan
+        """
+        for i, t in enumerate(self.plan):
+            if t.task_id == cur_id:
+                return i
+        return len(self.plan)
 
     def write_plan_to_file(self, path):
         meta = f'{len(self.processes)};'
