@@ -11,7 +11,18 @@ log = False
 
 
 class ProcessRunner:
-    def __init__(self, plan, tick_log="logs/tick.log", thresh_log="logs/per_tick_thresh_sum.log", thresh_log_pure="logs/per_tick_thresh_pure.log", ipt=1, log=False):
+    def __init__(self, plan, tick_log="logs/tick.log", thresh_log="logs/per_tick_thresh_sum.log", thresh_log_pure="logs/per_tick_thresh_pure.log", ipt=1, log=False, breakpoint=None):
+        """
+        The "runtime" environment for simulating a running node.
+
+        : param plan: The plan PR needs to run
+        : param tick_log: path to where the log per tick is written too
+        : param thresh_log: path to where the threshold will be logged too
+        : param thresh_log_pure: threshold logging for the threshold independant of it's plan/real length
+        : param ipt: instructions to run per tick
+        : param log: enable logging to file?
+        : param breakpoint: ticks after which the PR should stop for debugging/testing reasons
+        """
         assert type(plan) is Plan
 
         self.ipt: int = ipt
@@ -102,6 +113,8 @@ class ProcessRunner:
         """
         preempts the currently running task, inserts the remaining part where the next task of the process would start and starts the next process
         [CHECK] where to change things after preemption?
+        [TODO] Supress another instant preemption
+        [TODO] Let process only run amount of time that other task has available
         """
         cur_task_id = self.cur_task.task_id
         cur_process_id = self.cur_task.process_id
@@ -205,3 +218,7 @@ class ProcessRunner:
         if log is False:
             return
         self.tick_log.close()
+
+    @staticmethod
+    def get_process_runner(new_plan):
+        return ProcessRunner(new_plan)

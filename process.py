@@ -34,8 +34,8 @@ class Process:
         self.deadline = int(deadline)
 
         # state keeping process
-        self.tasks_plan = tasks  # list of all tasks
-        self.cur_task = self.tasks_plan[0]  # currently running task
+        self.tasks = tasks  # list of all tasks
+        self.cur_task = self.tasks[0]  # currently running task
         # the originally tracked length of the current task
         self.cur_task_length_plan = self.cur_task.length_plan
         self.process_id = self.cur_task.process_id
@@ -54,11 +54,11 @@ class Process:
                 return False
 
         def move_to_next_task():
-            self.tasks_plan = self.tasks_plan[1:]  # move to next task
-            if len(self.tasks_plan) == 0:  # process has finished
+            self.tasks = self.tasks[1:]  # move to next task
+            if len(self.tasks) == 0:  # process has finished
                 self.finished_process = True
                 return
-            self.cur_task = self.tasks_plan[0]  # pick next task
+            self.cur_task = self.tasks[0]  # pick next task
             self.cur_task_length_plan = self.cur_task.length_plan  # set variable
 
         if task_finished() is True:
@@ -78,7 +78,7 @@ class Process:
     #         self.lateness_process += self.ipt
 
     def __len__(self):
-        return len(self.tasks_plan)
+        return len(self.tasks)
 
     def update_stress(self, change: int):
         pass  # TODO: implement; change max_task_overstep

@@ -15,13 +15,16 @@ import thresholder
 # TODO: PLAN: Plan is getting reversed, so short processes start late
 # TODO: Visualisierung durchschnittlicher Threshold
 # TODO: Mehrere Prozesse pro Job um Plan-Vorstellung besser zu entsprechen
-
+# ---------------
 # --- ADMIN STUFF ---
+# ---------------
 LOG = True
 WRITE_PLAN = "logs/plan.log"
 JUST_GENERATE_PLAN = False
-
+TESTING = False
+# ---------------
 # --- CONFIGS ---
+# ---------------
 IPS = 4000000000
 HZ = 250
 INS_PER_TICK = int(IPS/HZ)
@@ -38,8 +41,10 @@ DEADLINE = 1.1  # total time * DEADLINE = Time to be finished
 MAX_TASK_OVERSTEP = 20
 CAP_LATENESS = 1.5
 SPACER_CONSTANT = 2
+# ---------------
 # --- PLAN CREATION ---
-FREE_TIME = 10
+# ---------------
+FREE_TIME = 10 #  Percentage of the plan that is not assigned
 
 NUMBER_PROCESSES = 3
 
@@ -54,13 +59,22 @@ BUFFER_MAX = 10
 LOAD = 1  # systemload
 
 
-def run_sim():
-    new_plan = Plan.generate_plan(NUMBER_PROCESSES,  PROCESS_MIN_LEN, PROCESS_MAX_LEN,
-                                  TASK_MIN_LEN, TASK_MAX_LEN, BUFFER_MIN, BUFFER_MAX, FREE_TIME, file_path=WRITE_PLAN)
-    task_lists_for_processes = sort_plan(new_plan)
+def run_sim(saved_plan=None):
+
+    # if simulation should not run saved plan, create new
+    if saved_plan is None:
+        new_plan = Plan.generate_plan(NUMBER_PROCESSES,  PROCESS_MIN_LEN, PROCESS_MAX_LEN,
+                                      TASK_MIN_LEN, TASK_MAX_LEN, BUFFER_MIN, BUFFER_MAX, FREE_TIME, file_path=WRITE_PLAN)
+    else:
+        new_plan = Plan.read_plan(saved_plan())
+
+
+    task_lists_for_processes = Plan.sort_plan(new_plan)
 
     runner = ProcessRunner(new_plan, ipt=INS_PER_TICK, log=LOG)
     runner.write_plan_to_file(WRITE_PLAN)
+
+    # here for debugging
     while not runner.has_finished() and not JUST_GENERATE_PLAN:
         runner.run_tick()
 
@@ -75,21 +89,6 @@ def create_processes(process_info: List[Task], buffer: int, deadline: int) -> Li
         # tasklist, buffer, deadline
         processes.append(Process(p[0], p[1], p[2]))
     return processes
-
-
-def sort_plan(plan: 'Plan') -> list:
-    """
-    Sorts all tasks of a long list of task into a list for each process.
-    Input: [task0,task1,task2,...]
-    Output:[[task0, task2], [task1,...],...] where the index is the process id
-    """
-    task_lists = [[] for p in range(len(plan.processes))]
-    for t in plan.task_list:
-        if t.process_id == -1:
-            continue
-        else:
-            task_lists[t.process_id].append(t)
-    return task_lists
 
 
 if __name__ == '__main__':

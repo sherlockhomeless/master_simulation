@@ -5,6 +5,8 @@ import task
 from random import randint
 from test_process import generate_test_process, generate_test_task
 
+
+
 def generate_test_plan() -> Plan:
     processes = []
     id = 0
@@ -25,7 +27,7 @@ def generate_test_plan() -> Plan:
 
 
 class TestPlan(unittest.TestCase):
-
+    task.ips = -1
     task.sigma = 1.1
     def test_plan_generation(self):
         generate_test_plan()
@@ -40,3 +42,49 @@ class TestPlan(unittest.TestCase):
 
 
         self.assertEqual(sum_tasks, num_all_tasks)
+
+    def test_generate_plan(self):
+        #python3 -m  unittest test_plan.TestPlan.test_generate_plan
+        num_processes = 3
+        min_len_process = 10
+        max_len_process = 20
+        min_len_task = 1000
+        max_len_task = 10000
+        min_buffer = 100
+        max_buffer = 500
+        free_time = 5
+
+        p = Plan.generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time)
+
+        self.assertEqual(p.number_all_proceses, num_processes+1)
+
+
+    def test_generate_tasks_for_processes(self):
+        # python3 -m  unittest test_plan.TestPlan.test_generate_tasks_for_processes
+        length_per_process = [10,20,25]
+        min_len, max_len = 10, 20
+
+
+        processes = Plan.generate_tasks_for_processes(length_per_process, min_len, max_len)
+
+        # are number of tasks ok?
+        tasks_sum = 0
+        for p in processes:
+            tasks_sum += len(p)
+        self.assertEqual(sum(length_per_process), tasks_sum)
+
+        # is last process for free slosts?
+        self.assertTrue(processes[-1][0].process_id == -1)
+
+
+    def test_generate_realistic_plan(self):
+        tasks = [[],[]]
+        number_tasks = 4
+        for x in range(number_tasks):
+            tasks[0].append(Task(0, 0, 0))
+            tasks[1].append(Task(1, 1, 1))
+
+        plan = Plan.generate_realistic_plan(tasks)
+
+        for x in range(number_tasks*2-1):
+            self.assertTrue(plan[x].process_id != plan[x+1].process_id)

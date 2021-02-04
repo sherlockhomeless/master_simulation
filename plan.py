@@ -1,4 +1,4 @@
-from random import randint
+from random import randint, choice
 from copy import deepcopy
 from task import Task
 from process import Process
@@ -16,116 +16,115 @@ class Plan:
         # last number is amount of free slots
         self.number_tasks_per_process = self.get_number_tasks_per_p()
         self.number_all_tasks = self.get_number_all_tasks()
+        self.number_all_proceses = len(self.processes)
 
     @staticmethod
-    def generate_plan(num_processes, min_len_p, max_len_p, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
-        """
-        Produces a plan according to the given parameters. The process with the id -1 stands for freely available time.
-        len_p: total amount of tasks per process
-        len_task: instructions per task
-        buffer: % of total length that is available as buffer
-        free_time: %*100 of total time that is not assigned
-        """
-        # calc amount of tasks for each process
-        process_length = [[] for x in range(num_processes)]
+    def generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
+        assert free_time >= 0
+        # --- generate random parameters ---
+        number_tasks_per_process = [[] for x in range(num_processes + 1)] # length of each process as int
         for p in range(num_processes):
-            process_length[p] = randint(min_len_p, max_len_p)
-            print(f'[PLAN] Process {p} has {process_length[p]} tasks')
+            number_tasks_per_process[p] = randint(min_len_process, max_len_process)
 
-        tasks_per_process = Plan.generate_tasks_for_processes(
-            list(process_length), min_len_task, max_len_task)
+        sum_all_tasks_of_processes = sum(number_tasks_per_process)
+        num_free_time_tasks = sum_all_tasks_of_processes / free_time
+        number_tasks_per_process[-1] = num_free_time_tasks
 
-        # create plan out of tasks for each process
-        plan = []
-        sum_tasks = 0
-        for p in tasks_per_process:
-            sum_tasks += len(p)
-        print(f'[PLAN] generated {sum_tasks} actual tasks')
-        all_pro_and_tasks = deepcopy(tasks_per_process)
-        free_slots = Plan.generate_free_slots(
-            free_time, sum_tasks, min_len_task, max_len_task)
-        all_pro_and_tasks.append(free_slots)
+        # generating actual tasks per process
+        tasks_per_process = Plan.generate_tasks_for_processes(number_tasks_per_process, min_len_task, max_len_task)
 
-        plan = Plan.generate_realistic_plan(all_pro_and_tasks, sum_tasks)
+        #task_list =
 
-        # calc buffers
-        buffer_list = []
-        for p in tasks_per_process:
-            sum_instructions = 0
-            for t in p:
-                sum_instructions += t.length_plan
-            buffer_list.append(
-                sum_instructions*(randint(min_buffer, max_buffer)/100))
 
-        # calc deadlines
-        #plan.reverse() # so ids are increasing
-        last_tasks_of_process_finish = Plan.find_last_task_ending(
-            plan, num_processes)
-        deadlines = []
-        for p, last_task_finish in enumerate(last_tasks_of_process_finish):
-            deadlines.append(last_task_finish + buffer_list[p])
 
-        # create plan data types
-        processes = []
-        for i in range(len(process_length)):
-            processes.append(
-                Process(tasks_per_process[i], int(buffer_list[i]), deadlines[i]))
 
-        assert len(processes) == len(process_length)
-        try:
-            assert len(plan) == sum_tasks + len(free_slots)
-        except Exception as e:
-            print(len(plan), sum_tasks, len(free_slots))
-            assert False
 
-        if file_path is not None:
-            with open(file_path, 'w') as f:
-                for t in plan:
-                    f.write(str(t)+'\n')
 
-        print(f'plan with {len(plan)} tasks created')
-        return Plan(plan, processes)
-
+    # @staticmethod
+    # def generate_plan_old(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
+    #
+    #
+    #     plan = Plan.generate_realistic_plan(tasks_per_process_deepcopy, sum_tasks)
+    #
+    #     # calc buffers
+    #     buffer_list = []
+    #     for p in tasks_per_process:
+    #         sum_instructions = 0
+    #         for t in p:
+    #             sum_instructions += t.length_plan
+    #         buffer_list.append(
+    #             sum_instructions*(randint(min_buffer, max_buffer)/100))
+    #
+    #     # calc deadlines
+    #     #plan.reverse() # so ids are increasing
+    #     last_tasks_of_process_finish = Plan.find_last_task_ending(
+    #         plan, num_processes)
+    #     deadlines = []
+    #     for p, last_task_finish in enumerate(last_tasks_of_process_finish):
+    #         deadlines.append(last_task_finish + buffer_list[p])
+    #
+    #     # create plan data types
+    #     processes = []
+    #     for i in range(len(process_length)):
+    #         processes.append(
+    #             Process(tasks_per_process[i], int(buffer_list[i]), deadlines[i]))
+    #
+    #     assert len(processes) == len(process_length)
+    #     try:
+    #         assert len(plan) == sum_tasks + len(free_slots)
+    #     except Exception as e:
+    #         print(len(plan), sum_tasks, len(free_slots))
+    #         assert False
+    #
+    #     if file_path is not None:
+    #         with open(file_path, 'w') as f:
+    #             for t in plan:
+    #                 f.write(str(t)+'\n')
+    #
+    #     print(f'plan with {len(plan)} tasks created')
+    #     return Plan(plan, processes)
+    #
     @staticmethod
-    def generate_realistic_plan(processes: List[List[Task]], sum_tasks: int) -> List[Task]:
+    def generate_realistic_plan(processes: List[List[Task]]) -> List[Task]:
         """
         Mixes up the plan in such a way that there is some kind of meaningful switching between tasks for different processes/jobs. The Task-List on the last index is for free slots
+
+        :param processes: List of List of Tasks, that represent processes
+        :return: List of Tasks that switches as much as possible between Tasks
         """
-        num_processes = len(processes)
-        cur_id = 0
+
+        def sum_rec(l):
+            if len(l) == 1:
+                return len(l[0])
+            else:
+                return len(l[0]) + sum_rec(l[1:])
+
+        ps = deepcopy(processes)
+
+        sum_tasks = sum_rec(ps)
+        num_processes = len(ps)
         plan = []
         last_picked = None
+        next_pick = None
 
-        for cur_task_id in range(sum_tasks):
-            found = False
-            for p in processes:
-                if found is True:
-                    break
-                for t in p:
-                    if t.task_id == cur_task_id:
-                        plan.append(t)
-                        found = True
-                        break
-        # now we got a plan with increasing task-ids, now insert free slots
-        for free_slot in processes[-1]:
-            insert_index = randint(1, len(plan)-1)
-            plan.insert(insert_index, free_slot)
+        for i in range(sum_tasks):
+            available_processes = set(range(num_processes)) - set([last_picked])
+            if len(available_processes) == 0:
+                available_processes = {0}
+            p_to_pick = choice(tuple(available_processes))
+
+            cur_process = ps[p_to_pick]
+            plan.append(cur_process[0])
+            ps[p_to_pick] = ps[p_to_pick][1:]
+            if len(ps[p_to_pick]) == 0:
+                del ps[p_to_pick]
+                num_processes -= 1
+            last_picked = p_to_pick
+
+        assert len(ps) == 0
+
         return plan
 
-    @staticmethod
-    def generate_free_slots(free_slot_chance: int, number_tasks: int, min_len: int, max_len: int) -> List[Task]:
-        """
-        generates a list of free slosts according to chance in FREE_TIME in proportion to number_tasks
-        """
-        free_slots_num = int(number_tasks / free_slot_chance)
-        free_slots = []
-        PROCESS_TASK_ID = -1
-        for free in range(free_slots_num):
-            length = randint(min_len, max_len)
-            new_task = Task(length, PROCESS_TASK_ID, PROCESS_TASK_ID)
-            free_slots.append(new_task)
-        print(f'[PLAN] have {free_slots_num} free slots')
-        return free_slots
 
     @staticmethod
     def find_last_task_ending(plan: List[Task], num_processes: int) -> List[int]:
@@ -145,33 +144,27 @@ class Plan:
     @staticmethod
     def generate_tasks_for_processes(length_per_process: List[int], min_len, max_len):
         """
-        Takes a List of integers that describe the tasks per process (index == process_id) and generates a list of tasks matching the length given by the integer
+        : length_per_process : Number of tasks per process, last process are free_slots
+        : min/max_len: length of tasks to be generated
+        return: [[task0_p0, task1_p0],[task0_p1, task1_p1],...[task0_p-1, task1_p-1,...]]
         """
+        task_id = 0
+        process_id = 0
+        tasks_per_process = []
+        for process_id, number_tasks_per_process in enumerate(length_per_process):
+            cur_task_list = []
+            if process_id == len(length_per_process) -1:
+                process_id = -1
 
-        num_processes = len(length_per_process)
-        tasks_per_process = [[] for x in range(num_processes)]
-        cur_id = 0
-        last_process_id = -1
-        next_task_process_id = 0
-        while(length_per_process != []):
-            cur_length = len(length_per_process)
-            # --- pick next process-id
-            while(next_task_process_id == last_process_id):
-                next_task_process_id = randint(0, cur_length-1)
-                if len(length_per_process) == 1:
-                    next_task_process_id = 0
-                    break
-            # --- pick next task
-            tasks_per_process[next_task_process_id].append(
-                Task(randint(min_len, max_len), next_task_process_id, cur_id))
-            # --- setup for next run
-            cur_id += 1
-            length_per_process[next_task_process_id] -= 1
-            if length_per_process[next_task_process_id] == 0:
-                length_per_process.remove(0)
-            last_process_id = next_task_process_id
+            for new_task in range(number_tasks_per_process):
+                length_plan = randint(min_len, max_len)
+                new_task = Task(length_plan, process_id, task_id)
+                cur_task_list.append(new_task)
+                task_id += 1
 
-        assert len(length_per_process) == 0
+            tasks_per_process.append(cur_task_list)
+
+
         return tasks_per_process
 
     def get_number_tasks_per_p(self) -> list:
@@ -194,6 +187,77 @@ class Plan:
                 counter += 1
         return counter
 
-#    @staticmethod
-#    def pick_next_task(all_pro_and_tasks):
-#        return all_pro_and_tasks[process_to_pick].pop()
+    @staticmethod
+    def sort_plan(tasks: List['Task']) -> list:
+        """
+        Sorts all tasks of a long list of task into a list for each process.
+        Input: [task0,task1,task2,...]
+        Output:[[task0, task2], [task1,...],...] where the index is the process id
+        """
+        # first count number of different processes
+        all_ps = {}
+        for task in tasks:
+            if task.process_id not in all_ps:
+                all_ps.union({task.process_id})
+
+        num_processes = len(all_ps)
+
+        task_lists = [[] for p in range(num_processes)]
+        for t in p.task_list:
+            if t.process_id == -1:
+                continue
+            else:
+                task_lists[t.process_id].append(t)
+        return task_lists
+
+    @staticmethod
+    def read_plan_from_file(path) -> "Plan":
+        """
+        Reads the plan pointed to by the string in path
+        """
+        # List of tasks of all processes
+        task_list = []
+        # Tuples with (buffer, deadline)
+        process_list = []
+        process_info = []
+
+        def back_together(lists): return "".join(lists)
+
+        with open(path, 'r') as p:
+            all = p.readline()
+            num_processes = int(all.split(';')[0])
+            print(f'number processes: {num_processes}')
+            process_data = all.split(';;;')[0].split(';')[1:]
+            print(process_data)
+            all = back_together(all.split(";;;")[1])
+            # process information
+            for p in range(num_processes):
+                p_info = process_data[p]
+                buffer = p_info.split(',')[2]
+                deadline = p_info.split(',')[3]
+                process_info.append((buffer, deadline))
+                print(f'process {p}: buffer = {buffer}, deadline = {deadline}')
+
+            # task information
+            task_strings = all.split(';')
+            task_strings.remove('\n')
+            for t in task_strings:
+                parts = t.split(',')
+                parts = list(map(int, parts))
+                process_id = parts[1]
+                task_id = parts[2]
+                length_plan = parts[3]
+                length_real = parts[4]
+                new_t = Task(length_plan, process_id, task_id, length_real=length_real)
+                task_list.append(new_t)
+                print(task_id)
+
+            tasks_per_p = Plan.sort_plan(task_list, num_processes)
+
+            for p in process_list:
+                p_info = process_info[0]
+                process_info = process_info[1:]
+                process_list.append(Process(tasks_per_p[0], p_info[0], p_info[1]))
+
+            read_plan = Plan(task_list, process_list)
+            return read_plan
