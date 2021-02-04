@@ -56,7 +56,8 @@ class TestPlan(unittest.TestCase):
 
         p = Plan.generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time)
 
-        self.assertEqual(p.number_all_proceses, num_processes+1)
+        self.assertEqual(p.number_all_proceses, num_processes)
+        
 
 
     def test_generate_tasks_for_processes(self):

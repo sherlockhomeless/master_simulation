@@ -24,73 +24,41 @@ class Plan:
         assert free_time >= 0
         # --- generate random parameters ---
         number_tasks_per_process = [[] for x in range(num_processes + 1)] # length of each process as int
+        sum_all_tasks_of_processes = 0
         for p in range(num_processes):
-            number_tasks_per_process[p] = randint(min_len_process, max_len_process)
+             number_tasks = randint(min_len_process, max_len_process)
+             number_tasks_per_process[p] = number_tasks
+             sum_all_tasks_of_processes += number_tasks
 
-        sum_all_tasks_of_processes = sum(number_tasks_per_process)
-        num_free_time_tasks = sum_all_tasks_of_processes / free_time
+        num_free_time_tasks = int(sum_all_tasks_of_processes / 100 * free_time)
         number_tasks_per_process[-1] = num_free_time_tasks
 
         # generating actual tasks per process
         tasks_per_process = Plan.generate_tasks_for_processes(number_tasks_per_process, min_len_task, max_len_task)
 
         tasks_for_plan = Plan.generate_realistic_plan(tasks_per_process)
-
         buffer_list = Plan.generate_buffer_list(tasks_per_process, (min_buffer, max_buffer))
 
         deadline_list = Plan.generate_deadlines(tasks_for_plan, buffer_list)
+        processes = []
+        # create process instances
+        for i in range(num_processes):
+            processes.append(Process(tasks_per_process[i], buffer_list[i], deadline_list[i]))
+
+        assert len(deadline_list) == len(buffer_list)
+        assert sum_all_tasks_of_processes + num_free_time_tasks == len(tasks_for_plan)
+
+        plan = Plan(tasks_for_plan, processes)
+
+        if file_path is not None:
+            with open(file_path, 'w') as f:
+                for t in plan:
+                    f.write(str(t)+'\n')
+
+        print(f'plan with {len(plan)} tasks created')
+        return plan
 
 
-
-
-
-
-
-
-    # @staticmethod
-    # def generate_plan_old(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
-    #
-    #
-    #     plan = Plan.generate_realistic_plan(tasks_per_process_deepcopy, sum_tasks)
-    #
-    #     # calc buffers
-    #     buffer_list = []
-    #     for p in tasks_per_process:
-    #         sum_instructions = 0
-    #         for t in p:
-    #             sum_instructions += t.length_plan
-    #         buffer_list.append(
-    #             sum_instructions*(randint(min_buffer, max_buffer)/100))
-    #
-    #     # calc deadlines
-    #     #plan.reverse() # so ids are increasing
-    #     last_tasks_of_process_finish = Plan.find_last_task_ending(
-    #         plan, num_processes)
-    #     deadlines = []
-    #     for p, last_task_finish in enumerate(last_tasks_of_process_finish):
-    #         deadlines.append(last_task_finish + buffer_list[p])
-    #
-    #     # create plan data types
-    #     processes = []
-    #     for i in range(len(process_length)):
-    #         processes.append(
-    #             Process(tasks_per_process[i], int(buffer_list[i]), deadlines[i]))
-    #
-    #     assert len(processes) == len(process_length)
-    #     try:
-    #         assert len(plan) == sum_tasks + len(free_slots)
-    #     except Exception as e:
-    #         print(len(plan), sum_tasks, len(free_slots))
-    #         assert False
-    #
-    #     if file_path is not None:
-    #         with open(file_path, 'w') as f:
-    #             for t in plan:
-    #                 f.write(str(t)+'\n')
-    #
-    #     print(f'plan with {len(plan)} tasks created')
-    #     return Plan(plan, processes)
-    #
     @staticmethod
     def generate_realistic_plan(processes: List[List[Task]]) -> List[Task]:
         """
@@ -143,6 +111,8 @@ class Plan:
         buffers = []
         buffer_percentage = randint(min_max[0], min_max[1])/100
         for i, process in enumerate(process_task_list):
+            if i == len(process_task_list) -1:
+                continue
             length_all = sum(process)
             buffers.append(length_all * buffer_percentage)
 
@@ -173,13 +143,6 @@ class Plan:
             deadlines[i] += buffer_list[i]
 
         return deadlines
-
-
-
-
-
-
-
 
 
 
