@@ -78,6 +78,7 @@ class TestPlan(unittest.TestCase):
 
 
     def test_generate_realistic_plan(self):
+        # python3 -m  unittest test_plan.TestPlan.test_generate_realistic_plan
         tasks = [[],[]]
         number_tasks = 4
         for x in range(number_tasks):
@@ -88,3 +89,25 @@ class TestPlan(unittest.TestCase):
 
         for x in range(number_tasks*2-1):
             self.assertTrue(plan[x].process_id != plan[x+1].process_id)
+
+        tasks = [[Task(0,0,0),  Task(0,0,0), Task(0,0,0)], [Task(1,1,1)]]
+        plan = Plan.generate_realistic_plan(tasks)
+
+        self.assertTrue(plan[0].process_id != plan[1].process_id)
+        self.assertTrue(plan[2].process_id == plan[3].process_id)
+
+    def test_generate_buffer_list(self):
+        # python3 -m  unittest test_plan.TestPlan.test_generate_buffer_list
+        tasks = [[Task(10,0,0), Task(10,0,0)], [Task(100,1,1)]]
+        buffers = Plan.generate_buffer_list(tasks, (100,100))
+
+        self.assertEqual(20, buffers[0])
+        self.assertEqual(100, buffers[1])
+
+    def test_generate_deadlines(self):
+
+        tasks = [Task(10,0,0), Task(5,1,1), Task(10,-1,0), Task(5,1,3)]
+        deadsies = Plan.generate_deadlines(tasks, (10,5))
+
+        self.assertEqual(20, deadsies[0])
+        self.assertEqual(35, deadsies[1])

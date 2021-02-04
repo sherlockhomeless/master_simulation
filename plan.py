@@ -20,6 +20,7 @@ class Plan:
 
     @staticmethod
     def generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
+
         assert free_time >= 0
         # --- generate random parameters ---
         number_tasks_per_process = [[] for x in range(num_processes + 1)] # length of each process as int
@@ -33,7 +34,13 @@ class Plan:
         # generating actual tasks per process
         tasks_per_process = Plan.generate_tasks_for_processes(number_tasks_per_process, min_len_task, max_len_task)
 
-        #task_list =
+        tasks_for_plan = Plan.generate_realistic_plan(tasks_per_process)
+
+        buffer_list = Plan.generate_buffer_list(tasks_per_process, (min_buffer, max_buffer))
+
+        deadline_list = Plan.generate_deadlines(tasks_for_plan, buffer_list)
+
+
 
 
 
@@ -124,6 +131,56 @@ class Plan:
         assert len(ps) == 0
 
         return plan
+
+
+    @staticmethod
+    def generate_buffer_list(process_task_list, min_max) -> [int]:
+        """
+        : param process_task_list: [[task0_p0, task1_p0,...],]
+        : param min_max: tuple(min_buffer, max_buffer)
+        : return: List of buffer-sizes per process
+        """
+        buffers = []
+        buffer_percentage = randint(min_max[0], min_max[1])/100
+        for i, process in enumerate(process_task_list):
+            length_all = sum(process)
+            buffers.append(length_all * buffer_percentage)
+
+        return buffers
+
+    @staticmethod
+    def generate_deadlines(plan_task_list, buffer_list):
+        """
+        : param plan_task_list: [task0, task1, task2,...]
+        : param buffer_list: [int, int, int,...]
+        """
+        processes_in_plan = set()
+        for task in plan_task_list:
+            if task.process_id not in processes_in_plan:
+                processes_in_plan = processes_in_plan.union({task.process_id})
+        processes_in_plan = list(processes_in_plan - {-1})
+
+        deadlines = [0 for x in range(len(processes_in_plan))]
+        time = 0
+
+        for task in plan_task_list:
+            time += task.length_plan
+            if task.process_id != -1:
+                deadlines[task.process_id] = time
+
+
+        for i in range(len(buffer_list)):
+            deadlines[i] += buffer_list[i]
+
+        return deadlines
+
+
+
+
+
+
+
+
 
 
     @staticmethod
