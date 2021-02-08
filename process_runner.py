@@ -8,6 +8,7 @@ from plan import Plan
 
 
 log = False
+COST_CONTEXT_SWITCH = None
 
 
 class ProcessRunner:
@@ -38,6 +39,7 @@ class ProcessRunner:
         self.cur_process_id = self.cur_process.process_id
         self.finished_tasks = 0
         self.vrm = VRM(self.plan)
+        self.time = 0
 
         if log is True:
             self.tick_log = open(tick_log, 'w')
@@ -56,39 +58,63 @@ class ProcessRunner:
 
         cur_task = self.cur_task
         cur_process = self.cur_process
+        cur_process_id = cur_process.process_id
+        cur_task_id = cur_task.task_id
+        cur_thresholds = self.thresholds[cur_process_id]
         ins = self.ipt
         # runs the full set of instructions on the current task
         cur_task.run(ins)
 
-        if cur_task.finshed_early:
-            early_instructions = cur_task.get_early_instructions()
-            self.tracking.add_lateness_to_task(
-                cur_task.task_id, -1 * early_instructions)
-            self.tracking.add_lateness_to_process(
-                cur_process.process_id, -1 * early_instructions)
-            self.tracking.update_overall_lateness(-1*early_instructions)
-            self.tracking.update_buffer(
-                cur_process.process_id, -1*early_instructions)
 
-        if cur_task.is_late:
-            late_instructions = cur_task.get_late_instructions(ins)
-            self.tracking.add_lateness_to_task(
-                cur_task.task_id, late_instructions)
-            self.tracking.add_lateness_to_process(
-                cur_process.process_id, late_instructions)
-            self.tracking.update_buffer(
-                cur_process.process_id, late_instructions)
-            # continue here
+        if cur_task.has_task_finished():
+            instructions_left_in_tick = cur_task.get_overdone_instructions()
 
-        if cur_task.task_finished:
-            ipt_left = cur_task.get_overdone_instructions()
-            cur_process.run_task(cur_task.task_id, ins - ipt_left)
+            if cur_task.has_task_finished_early():
+                current_t_m2 = cur_thresholds.t_minus2
+                earliness = cur_task.get_early_instructions(instructions_left_in_tick)
+                if earliness < current_t_m2:
+                    self.vrm.signal_t_m2(earliness, cur_process_id, cur_task_id)
+
             self.pick_next_task()
-            cur_task = self.cur_task
-            cur_task.run(ipt_left)
-            self.cur_process_id = cur_task.process_id
-            print(
-                f'[PROCESS_RUNNER] starting next task {self.cur_task.task_id}')
+            cur_task.run(instructions_left_in_tick)
+
+        elif cur_task.is_task_late():
+            cur_t1, cur_t2 = cur_thresholds.t1, cur_thresholds.t2
+            raise NotImplementedError
+
+
+
+
+
+        # if cur_task.finshed_early:
+        #     early_instructions = cur_task.get_early_instructions()
+        #     self.tracking.add_lateness_to_task(
+        #         cur_task.task_id, -1 * early_instructions)
+        #     self.tracking.add_lateness_to_process(
+        #         cur_process.process_id, -1 * early_instructions)
+        #     self.tracking.update_overall_lateness(-1*early_instructions)
+        #     self.tracking.update_buffer(
+        #         cur_process.process_id, -1*early_instructions)
+        #
+        # if cur_task.is_late:
+        #     late_instructions = cur_task.get_late_instructions(ins)
+        #     self.tracking.add_lateness_to_task(
+        #         cur_task.task_id, late_instructions)
+        #     self.tracking.add_lateness_to_process(
+        #         cur_process.process_id, late_instructions)
+        #     self.tracking.update_buffer(
+        #         cur_process.process_id, late_instructions)
+        #     # continue here
+        #
+        # if cur_task.task_finished:
+        #     ipt_left = cur_task.get_overdone_instructions()
+        #     cur_process.run_task(cur_task.task_id, ins - ipt_left)
+        #     self.pick_next_task()
+        #     cur_task = self.cur_task
+        #     cur_task.run(ipt_left)
+        #     self.cur_process_id = cur_task.process_id
+        #     print(
+        #         f'[PROCESS_RUNNER] starting next task {self.cur_task.task_id}')
 
         self.tracking.run_tick(self.ipt)
         self.update_thresholds()
@@ -141,6 +167,7 @@ class ProcessRunner:
 
     def pick_next_task(self):
         """
+        : param instructions_left: int, number of instructions left in current tick
         Picks the next task
         ! shortens the plan
         """
@@ -149,6 +176,7 @@ class ProcessRunner:
             return
         self.cur_task = self.plan[0]
         self.cur_process = self.processes[self.cur_task.process_id]
+
 
     def run(self):
         while self.has_finished is False:

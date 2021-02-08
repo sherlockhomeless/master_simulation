@@ -29,6 +29,7 @@ def generate_test_plan() -> Plan:
 class TestPlan(unittest.TestCase):
     task.ips = -1
     task.sigma = 1.1
+
     def test_plan_generation(self):
         generate_test_plan()
 
@@ -56,8 +57,18 @@ class TestPlan(unittest.TestCase):
 
         p = Plan.generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time)
 
+        # right number?
         self.assertEqual(p.number_all_proceses, num_processes)
-        
+
+        # right references?
+        first_task_plan = p.task_list[0]
+        first_task_in_p = None
+        for process in p.processes:
+            first_task_process = process.tasks[0]
+            if first_task_plan.task_id == first_task_process.task_id:
+                first_task_in_p = first_task_process
+
+        self.assertTrue(first_task_in_p is first_task_plan)
 
 
     def test_generate_tasks_for_processes(self):

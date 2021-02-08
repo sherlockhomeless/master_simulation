@@ -7,7 +7,7 @@ log = False
 hz = None
 max_buff_usg = 0
 ticks_off = 1
-max_task_deviation = None
+max_task_deviation_t1 = None
 # depending on the general lateness on the node, this value will be adjusted
 max_task_overstep = None
 
@@ -30,7 +30,7 @@ class Process:
         self.max_buff_usg = max_buff_usg
 
         # config
-        self.buffer = buffer  # unedited, pure number of instructions
+        self.buffer = int(buffer)  # unedited, pure number of instructions
         self.deadline = int(deadline)
 
         # state keeping process
@@ -63,19 +63,6 @@ class Process:
 
         if task_finished() is True:
             move_to_next_task()
-
-    # def update_lateness(self):
-    #     # task is on time
-    #     if self.cur_task.length_plan > 0:
-    #         return
-    #     # tasks turns late
-    #     elif self.cur_task.length_plan < 0 and self.cur_task.late is False:
-    #         self.lateness_task += self.cur_task.length_plan
-    #         self.lateness_process += self.cur_task.length_plan
-    #         self.cur_task.late = True
-    #     elif self.cur_task.length_plan < 0 and self.cur_task.late is True:
-    #         self.lateness_task += self.ipt
-    #         self.lateness_process += self.ipt
 
     def __len__(self):
         return len(self.tasks)

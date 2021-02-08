@@ -41,6 +41,7 @@ DEADLINE = 1.1  # total time * DEADLINE = Time to be finished
 MAX_TASK_OVERSTEP = 20
 CAP_LATENESS = 1.5
 SPACER_CONSTANT = 2
+COST_CONTEXT_SWITCH = INS_PER_TICK # [CHECK] Reasonable?
 # ---------------
 # --- PLAN CREATION ---
 # ---------------
@@ -102,7 +103,7 @@ if __name__ == '__main__':
     process_runner.log = LOG
     thresholder.log = LOG
     thresholder.reschedule_time = RESCHEDULE_TIME
-    thresholder.max_task_deviation = MAX_TASK_DEVIAION
+    thresholder.max_task_deviation_t1 = MAX_TASK_DEVIAION
     thresholder.max_relative_deviation = MAX_RELATIVE_DEVEATION
     thresholder.ipt = INS_PER_TICK
     thresholder.cap_lateness = CAP_LATENESS
@@ -110,6 +111,7 @@ if __name__ == '__main__':
     thresholder.spacer_constant = SPACER_CONSTANT
     process.deadline = DEADLINE
     process.max_task_overstep = MAX_TASK_OVERSTEP * INS_PER_TICK
+    process_runner.COST_CONTEXT_SWITCH = COST_CONTEXT_SWITCH
     run_sim()
 
 

@@ -37,11 +37,12 @@ class Plan:
         tasks_per_process = Plan.generate_tasks_for_processes(number_tasks_per_process, min_len_task, max_len_task)
 
         tasks_for_plan = Plan.generate_realistic_plan(tasks_per_process)
+
         buffer_list = Plan.generate_buffer_list(tasks_per_process, (min_buffer, max_buffer))
 
         deadline_list = Plan.generate_deadlines(tasks_for_plan, buffer_list)
         processes = []
-        # create process instances
+        # create process inst   ances
         for i in range(num_processes):
             processes.append(Process(tasks_per_process[i], buffer_list[i], deadline_list[i]))
 
@@ -78,7 +79,7 @@ class Plan:
 
         sum_tasks = sum_rec(ps)
         num_processes = len(ps)
-        plan = []
+        plan_w_placeholder = []
         last_picked = None
         next_pick = None
 
@@ -89,14 +90,26 @@ class Plan:
             p_to_pick = choice(tuple(available_processes))
 
             cur_process = ps[p_to_pick]
-            plan.append(cur_process[0])
+            plan_w_placeholder.append(cur_process[0])
             ps[p_to_pick] = ps[p_to_pick][1:]
             if len(ps[p_to_pick]) == 0:
                 del ps[p_to_pick]
                 num_processes -= 1
             last_picked = p_to_pick
 
+
+
         assert len(ps) == 0
+
+        # fix references
+
+        plan = []
+        for el in plan_w_placeholder:
+            p_id = el.process_id
+            for t in processes[p_id]:
+                if t.task_id == el.task_id:
+                    plan.append(t)
+
 
         return plan
 
@@ -143,7 +156,6 @@ class Plan:
             deadlines[i] += buffer_list[i]
 
         return deadlines
-
 
 
     @staticmethod
@@ -215,15 +227,16 @@ class Plan:
         Output:[[task0, task2], [task1,...],...] where the index is the process id
         """
         # first count number of different processes
-        all_ps = {}
+        all_ps = set()
         for task in tasks:
             if task.process_id not in all_ps:
-                all_ps.union({task.process_id})
+                all_ps = all_ps.union({task.process_id})
 
+        all_ps -= set({-1})
         num_processes = len(all_ps)
 
         task_lists = [[] for p in range(num_processes)]
-        for t in p.task_list:
+        for t in tasks:
             if t.process_id == -1:
                 continue
             else:
@@ -238,8 +251,8 @@ class Plan:
         # List of tasks of all processes
         task_list = []
         # Tuples with (buffer, deadline)
-        process_list = []
         process_info = []
+        process_list = []
 
         def back_together(lists): return "".join(lists)
 
@@ -248,7 +261,6 @@ class Plan:
             num_processes = int(all.split(';')[0])
             print(f'number processes: {num_processes}')
             process_data = all.split(';;;')[0].split(';')[1:]
-            print(process_data)
             all = back_together(all.split(";;;")[1])
             # process information
             for p in range(num_processes):
@@ -256,7 +268,6 @@ class Plan:
                 buffer = p_info.split(',')[2]
                 deadline = p_info.split(',')[3]
                 process_info.append((buffer, deadline))
-                print(f'process {p}: buffer = {buffer}, deadline = {deadline}')
 
             # task information
             task_strings = all.split(';')
@@ -272,12 +283,14 @@ class Plan:
                 task_list.append(new_t)
                 print(task_id)
 
-            tasks_per_p = Plan.sort_plan(task_list, num_processes)
+            tasks_per_p = Plan.sort_plan(task_list)
 
-            for p in process_list:
-                p_info = process_info[0]
-                process_info = process_info[1:]
+            for p_info in process_info:
                 process_list.append(Process(tasks_per_p[0], p_info[0], p_info[1]))
+                tasks_per_p = tasks_per_p[1:]
 
             read_plan = Plan(task_list, process_list)
             return read_plan
+
+    def __len__(self):
+        return len(self.task_list)

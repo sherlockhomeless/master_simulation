@@ -5,8 +5,8 @@ from task import Task
 
 log = False
 reschedule_time = None  # time it takes to receive a new plan
-max_task_deviation = None  # Max. Insrtructions a Task is allowed to be off
-max_relative_deviation = None
+max_task_deviation_t1_t1 = None  # Max. Insrtructions a Task is allowed to be off
+max_relative_deviation_t1 = None # Max relative deviation for t1
 ipt = None
 cap_lateness = None
 consumable_buffer = None
@@ -27,9 +27,9 @@ class Threshold:
         # factor that determines how much bigger t2 has to be then t1
         self.SPACER_CONSTANT = spacer_constant
         # counted in number of instructions off globaly max off
-        self.max_task_deviation = max_task_deviation
+        self.max_task_deviation_t1 = max_task_deviation_t1
         # given in % of task planned length
-        self.max_relative_deviation = max_relative_deviation
+        self.max_relative_deviation_t1 = max_relative_deviation_t1
         # [TODO] Include Load
         self.load = 1
         # [CHECK] Total available buffer in instructions
@@ -39,12 +39,14 @@ class Threshold:
         self.threshold_state = 0  # holds the current state of the threshold
 
         self.t1 = None
-        self.t2 = None
+        self.t2_task = None
+        self.t2_process = None
         self.t_minus2 = None
 
         self.thresholds = {
             "t1": self.t1,
-            "t2": self.t2,
+            "t2_task": self.t2_task,
+            "t2_process": self.t2_process,
             "t_minus2": self.t_minus2,
             "t1_pure": 0,
             "t2_pure": 0,
@@ -74,7 +76,7 @@ class Threshold:
             assert 0 < self.t1 and 0 < self.t2
             assert self.t_minus2 < 0
         except AssertionError:
-            set_trace()
+            print("assertion error in update_thrsholds")
         self.update_dict(instructions_planned)
 
         if self.log is True:
@@ -91,8 +93,8 @@ class Threshold:
             * max_global_deviation => is a global boundary that ensures that independant of the task details, a certain amount of ticks is not transgressed
             * max_local_deviation => is a local, relative boundary relating to the details of the task TODO: AND PROCESS
         '''
-        max_global_deviation = self.max_task_deviation + instructions_planned
-        max_local_deviation = instructions_planned * self.max_relative_deviation
+        max_global_deviation = self.max_task_deviation_t1 + instructions_planned
+        max_local_deviation = instructions_planned * self.max_relative_deviation_t1
         t1 = int(min(max_global_deviation, max_local_deviation))
         #  print("max_global_deviation") if max_global_deviation < max_local_deviation else print("max_local_deviation")
 
@@ -157,3 +159,19 @@ class Threshold:
 
     def __getitem__(self, name):
         return self.thresholds[name]
+
+    @staticmethod
+    def setup_for_testing(max_task_dev, ins_per_sec):
+        """
+        : param max_task_dev: int, max instructions
+        : param ins_per_sec: int, regular ipt
+        """
+
+        log = False
+        ipt = ins_per_sec
+        reschedule_time = 0  # time it takes to receive a new plan
+        max_task_deviation_t1 = max_task_dev   # Max. Insrtructions a Task is allowed to be off
+        max_relative_deviation_t1 = None
+        cap_lateness = None
+        consumable_buffer = None
+        spacer_constant = None

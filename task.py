@@ -24,10 +24,11 @@ class Task:
         self.process_id = process_id
         self.task_id = task_id
 
-        self.is_late = False
         self.task_finished = False
+        self.finished_early = False
         self.turned_late = False
-        self.finshed_early = False
+        self.is_late = False
+        self.was_preempted = False
 
     def run(self, ins):
         '''
@@ -49,10 +50,16 @@ class Task:
             self.is_late = True
 
         if self.task_finished and self.length_plan > 0:
-            self.finshed_early = True
+            self.finished_early = True
 
-    def task_finished(self):
+    def has_task_finished(self):
         return self.task_finished
+
+    def has_task_finished_early(self):
+        return self.finished_early
+
+    def is_task_late(self):
+        return self.turned_late or self.is_late
 
     def get_overdone_instructions(self):
         """
@@ -60,20 +67,21 @@ class Task:
         """
 
         assert self.length_real <= 0
-        return -(self.length_real)
 
+        return -(self.length_real)
     def get_late_instructions(self, ins) -> int:
         """
         Helper method, that helps get the instructions a Task is late. Helps to decide if all instructions of a tick add to lateness or just some part of them
         """
         return -(self.length_plan) if self.turned_late else ins
 
-    def get_early_instructions(self):
+    def get_early_instructions(self, unusesd_instructions=0):
         """
+        : param unused_instructions: int
         Helper method that helps get keeps track of instructions, if a task finished early.
         """
         assert self.length_real < self.length_plan
-        return self.length_plan - self.length_real
+        return self.length_plan - (self.length_real - unused_instructions)
 
     def __str__(self):
         return f'(process: {self.process_id}, id: {self.task_id}, plan_len: {self.length_plan}, real_len:{self.length_real})'

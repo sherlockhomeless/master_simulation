@@ -5,9 +5,15 @@ class Tracker:
     Objects of this class keep track off all the stats that are required for threshold calculation and analysis
     """
     def __init__(self, number_processes, number_tasks, processes):
+        """
+        : param number_processes:  int, how many processes to track
+        : param number_tasks: int, total number of tasks
+        : param processes: [Process], all processes to track 
+        """
+
         self.number_processes = number_processes
         self.number_tasks = number_tasks
-        self.task_lists = [x.tasks_plan for x in processes]
+        self.task_lists = [x.tasks for x in processes]
 
             # ---- PROCESS SPECIFIC TRACKING ----
         self.process_latenesses = [0 for x in range(number_processes)] # the individual buffer of a job

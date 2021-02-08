@@ -19,6 +19,7 @@ class VRM:
     def __init__(self, plan: Plan):
         self.plan = plan
         self.reschedule_func = self.reschedule_simple # set for different rescheduling mechanisms
+        self.received_signals = []
 
     def reschedule(self, signal: PredictionFailure) -> Plan:
         return self.reschedule_func(signal)
@@ -31,3 +32,10 @@ class VRM:
                 task.length_plan *= signal.transgression
 
         return self.plan
+
+    def signal_t_m2(self, t: "Task"):
+        self.received_signals.append(t)
+         # [TODO]: Implement
+
+    def get_last_signal(self):
+        return self.received_signals[-1]
