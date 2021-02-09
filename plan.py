@@ -281,7 +281,6 @@ class Plan:
                 length_real = parts[4]
                 new_t = Task(length_plan, process_id, task_id, length_real=length_real)
                 task_list.append(new_t)
-                print(task_id)
 
             tasks_per_p = Plan.sort_plan(task_list)
 

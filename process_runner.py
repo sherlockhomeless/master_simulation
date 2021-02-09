@@ -40,6 +40,7 @@ class ProcessRunner:
         self.finished_tasks = 0
         self.vrm = VRM(self.plan)
         self.time = 0
+        self.cost_context_switch = COST_CONTEXT_SWITCH
 
         if log is True:
             self.tick_log = open(tick_log, 'w')
@@ -55,7 +56,7 @@ class ProcessRunner:
 
         # --- update on task & process level ---
         assert self.cur_task.length_real > 0
-
+        self.update_thresholds()
         cur_task = self.cur_task
         cur_process = self.cur_process
         cur_process_id = cur_process.process_id
@@ -64,7 +65,6 @@ class ProcessRunner:
         ins = self.ipt
         # runs the full set of instructions on the current task
         cur_task.run(ins)
-
 
         if cur_task.has_task_finished():
             instructions_left_in_tick = cur_task.get_overdone_instructions()
@@ -79,8 +79,15 @@ class ProcessRunner:
             cur_task.run(instructions_left_in_tick)
 
         elif cur_task.is_task_late():
+            instructions_run = cur_task.run_instructions
             cur_t1, cur_t2 = cur_thresholds.t1, cur_thresholds.t2
-            raise NotImplementedError
+            if instructions_run > cur_t1:
+                # preempt if not already preempted
+                if not cur_task.was_preempted:
+                    self.preempt_current_process()
+
+
+
 
 
 
@@ -117,10 +124,9 @@ class ProcessRunner:
         #         f'[PROCESS_RUNNER] starting next task {self.cur_task.task_id}')
 
         self.tracking.run_tick(self.ipt)
-        self.update_thresholds()
 
-        if cur_task.is_late and self.transgresses_t1():
-            self.preempt_current_process()
+        # if cur_task.is_late and self.transgresses_t1():
+        #     self.preempt_current_process()
 
         if log:
             self.write_thresh_log()
@@ -142,12 +148,15 @@ class ProcessRunner:
         [TODO] Supress another instant preemption
         [TODO] Let process only run amount of time that other task has available
         """
+        self.tracking.preempte_task(self.time, self.cur_task)
+
         cur_task_id = self.cur_task.task_id
         cur_process_id = self.cur_task.process_id
         next_task_index = self.search_task_following(cur_task_id)
         next_task = self.plan[next_task_index]
+        plan = self.plan
         # we look for a slot in the plan that either is assigned to the same process id or is free (=> -1)
-        while next_task.process_id != self.cur_task.process_id or next_task.process_id != -1:
+        while next_task.process_id != self.cur_task.process_id and next_task.process_id != -1:
             try:
                 next_task_index += 1
                 next_task = self.plan[next_task_index]
@@ -157,7 +166,9 @@ class ProcessRunner:
         self.plan.insert(next_task_index, self.cur_task)
         self.plan = self.plan[1:]
         self.cur_task = self.plan[0]
-        print(f'Task ({cur_process_id},{cur_task_id}) was moved to plan index {next_task_index} before ({self.plan[next_task_index+1].process_id},{self.plan[next_task_index+1].task_id}) ')
+        self.time += self.cost_context_switch
+        self.tracking.start_task(self.time, self.cur_task)
+        print(f'Task ({cur_process_id},{cur_task_id}) was moved to plan index {next_task_index} before ({self.plan[next_task_index].process_id},{self.plan[next_task_index].task_id}) ')
 
     def singal_prediction_failure(self):
         """
@@ -171,12 +182,14 @@ class ProcessRunner:
         Picks the next task
         ! shortens the plan
         """
+        self.tracking.end_task( self.time, self.cur_task)
         self.plan = self.plan[1:]
         if len(self.plan) == 0:
             return
+        self.time += self.cost_context_switch
         self.cur_task = self.plan[0]
         self.cur_process = self.processes[self.cur_task.process_id]
-
+        self.tracking.start_task( self.time, self.cur_task)
 
     def run(self):
         while self.has_finished is False:
@@ -203,7 +216,7 @@ class ProcessRunner:
         """
         for i, t in enumerate(self.plan):
             if t.task_id == cur_id:
-                return i
+                return i+1
         return len(self.plan)
 
     def write_plan_to_file(self, path):

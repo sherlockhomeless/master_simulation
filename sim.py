@@ -94,7 +94,7 @@ def create_processes(process_info: List[Task], buffer: int, deadline: int) -> Li
 
 if __name__ == '__main__':
     task.sigma = SIGMA
-    task.ips = INS_PER_TICK
+    task.ipt = INS_PER_TICK
     process.ipt = INS_PER_TICK
     process.load = LOAD
     process.hz = HZ

@@ -5,8 +5,8 @@ from task import Task
 
 log = False
 reschedule_time = None  # time it takes to receive a new plan
-max_task_deviation_t1_t1 = None  # Max. Insrtructions a Task is allowed to be off
-max_relative_deviation_t1 = None # Max relative deviation for t1
+max_ticks_off_t1 = None  # max time ticks a task is allowed to be off its plan
+max_relative_deviation_t1 = None # sigma in thesis, % deviation from plan
 ipt = None
 cap_lateness = None
 consumable_buffer = None
@@ -20,16 +20,21 @@ class Threshold:
         self.process_id = process.process_id
         self.reschedule_time = reschedule_time
         self.ipt = ipt
+        # --- PARAS t1 ---
+        # max time ticks a task is allowed to be off its plan
+        self.max_ticks_off_t1 = max_ticks_off_t1
+        # sigma in thesis, % deviation from plan
+        self.max_relative_deviation_t1 = max_relative_deviation_t1
+        self.PREEMPTION_LIMIT = self.max_ticks_off_t1 * self.ipt
+
+        # --- PARAS t2 ---
         # how much is a task allowed to deviate from it's plan, eg. 120% => 1.2
         self.CAP_LATENESS = cap_lateness
         # how much of the buffer is available for usage
         self.CONSUMEABLE_BUFFER = consumable_buffer
         # factor that determines how much bigger t2 has to be then t1
         self.SPACER_CONSTANT = spacer_constant
-        # counted in number of instructions off globaly max off
-        self.max_task_deviation_t1 = max_task_deviation_t1
-        # given in % of task planned length
-        self.max_relative_deviation_t1 = max_relative_deviation_t1
+
         # [TODO] Include Load
         self.load = 1
         # [CHECK] Total available buffer in instructions
@@ -69,7 +74,10 @@ class Threshold:
         usable_buffer = self.calc_usable_buffer(instructions_planned, instructions_left)
         self.t1 = self.calc_t1(cur_task.length_plan_unchanged)
         self.t2 = self.calc_t2(usable_buffer, cur_task.length_plan_unchanged)
-        self.t_minus2 = self.calc_t_minus(cur_task.length_plan)
+        try:
+            self.t_minus2 = self.calc_t_minus(cur_task.length_plan)
+        except NotImplementedError:
+            self.t_minus2 = self.t2 * -1
 
         try:
             assert self.t1 < self.t2
@@ -93,14 +101,13 @@ class Threshold:
             * max_global_deviation => is a global boundary that ensures that independant of the task details, a certain amount of ticks is not transgressed
             * max_local_deviation => is a local, relative boundary relating to the details of the task TODO: AND PROCESS
         '''
-        max_global_deviation = self.max_task_deviation_t1 + instructions_planned
-        max_local_deviation = instructions_planned * self.max_relative_deviation_t1
-        t1 = int(min(max_global_deviation, max_local_deviation))
-        #  print("max_global_deviation") if max_global_deviation < max_local_deviation else print("max_local_deviation")
+        task_hard_limit = self.PREEMPTION_LIMIT + instructions_planned
+        relative_deviation = instructions_planned * self.max_relative_deviation_t1
+        t1 = int(min(relative_deviation, task_hard_limit))
 
         return t1
 
-    def calc_t2(self, available_buffer, length_plan, stress=0) -> int:
+    def calc_t2(self, usable_buffer, length_plan, stress=0) -> int:
         """
         Triggers PredictionFailure to VRM. Conditions:
         1. Individual Task was extremly off => in current implementation this condition holds if one task takes the amount of two slots of the assigned time
@@ -109,14 +116,16 @@ class Threshold:
         [TODO] static threshhold depending on stress level
         """
 
-        t2_with_buffer_cap = self.t1 + stress * self.ipt - self.reschedule_time
+        t2_relative_buffer = self.t1 + usable_buffer + stress * self.ipt - self.reschedule_time
         t2_cap_lateness = self.CAP_LATENESS * length_plan
-        t2 = min(t2_with_buffer_cap, t2_cap_lateness)
+        t2_process_state = t2_cap_lateness  # IMPLEMENT
+        t2 = min(t2_relative_buffer, t2_cap_lateness, t2_process_state)
         t2 = int(t2)
-
+        assert self.t1 < t2
         return t2 if t2 > self.t1 else self.t1 * self.SPACER_CONSTANT
 
     def calc_t_minus(self, instructions_planned):
+        raise NotImplementedError
         return int(-1 * self.t2 * 2)
 
     def get_thresholds(self) -> dict:
@@ -128,6 +137,8 @@ class Threshold:
         """
         instructions_done = instructions_planned - instructions_left
         process_completion = instructions_done / instructions_planned
+        if process_completion < 0.05:
+            process_completion = 0.05
         available_buffer = self.buffer * self.load * self.CONSUMEABLE_BUFFER
         usable_buffer = available_buffer * process_completion
 

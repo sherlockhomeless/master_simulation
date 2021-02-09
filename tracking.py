@@ -1,3 +1,15 @@
+from task import Task
+
+
+class TrackingEvent:
+    def __init__(self, t: Task, time_stamp: int, type_event: 'str'):
+        assert type(t) is Task
+        assert type(time_stamp) is int
+        assert type_event in ('t1', 't2', 'tm2', 'task_start', 'task_end')
+
+        self.task = t
+        self.time_stamp = time_stamp
+        self.type_event = type_event
 
 
 class Tracker:
@@ -8,7 +20,7 @@ class Tracker:
         """
         : param number_processes:  int, how many processes to track
         : param number_tasks: int, total number of tasks
-        : param processes: [Process], all processes to track 
+        : param processes: [Process], all processes to track
         """
 
         self.number_processes = number_processes
@@ -32,6 +44,7 @@ class Tracker:
         self.stress = 0
         self.time_instructions = 0 # keeps time of the instructions passed
         self.cur_tick = 0
+        self.change_log = []
 
     def run_tick(self, ins: int):
         self.time_instructions += ins
@@ -93,3 +106,22 @@ class Tracker:
     def get_current_tick(self) -> int:
         # returns current tick of simulation as increments of start value 0
         return self.cur_tick
+
+    def preempte_task(self, time: int, preempted_task: Task):
+        self.change_log.append(TrackingEvent(preempted_task, time, "t1"))
+
+    def start_task(self, time: int, new_task: Task):
+        self.change_task("task_start", time, new_task)
+
+    def end_task(self, time: int, old_task):
+        self.change_task("task_end", time, old_task)
+
+    def change_task(self, change: str, time: int, t: "Task"):
+        """
+        Tracks changes in what task is running on the node
+        """
+
+        assert type(time) is int
+        assert type(t) is Task
+
+        self.change_log.append(TrackingEvent(t, time, change))

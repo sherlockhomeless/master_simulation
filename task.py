@@ -1,7 +1,7 @@
 import numpy as np
 
 sigma = None
-ips = None
+ipt = None
 
 
 class Task:
@@ -12,10 +12,11 @@ class Task:
 
     def __init__(self, length_plan, process_id, task_id, length_real=None):
         assert type(length_plan) is int
-        assert length_plan > ips
+        assert length_plan >= ipt
 
         self.length_plan_unchanged = length_plan
         self.length_plan = length_plan  # decreases
+        self.run_instructions = 0  # increases
         if length_real is None:
             self.length_real = int(np.random.normal(
                 length_plan, length_plan/100 * sigma, 1))
@@ -38,6 +39,7 @@ class Task:
         '''
         self.length_real -= ins
         self.length_plan -= ins
+        self.run_instructions += ins
 
         if self.length_real <= 0:
             self.task_finished = True
@@ -75,7 +77,7 @@ class Task:
         """
         return -(self.length_plan) if self.turned_late else ins
 
-    def get_early_instructions(self, unusesd_instructions=0):
+    def get_early_instructions(self, unused_instructions=0):
         """
         : param unused_instructions: int
         Helper method that helps get keeps track of instructions, if a task finished early.
