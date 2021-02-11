@@ -1,12 +1,13 @@
 import unittest
+
+import config
 from process_runner import ProcessRunner
 from plan import Plan
-import sim
 import task
 import thresholder
-import process_runner
 
-task.ips = sim.INS_PER_TICK
+
+task.ips = config.INS_PER_TICK
 
 
 class TestProcessRunner(unittest.TestCase):
@@ -20,7 +21,7 @@ class TestProcessRunner(unittest.TestCase):
         thresholder.reschedule_time = 0
         thresholder.cap_lateness = 2
         thresholder.spacer_constant = 1
-        process_runner.COST_CONTEXT_SWITCH = 1
+        config.COST_CONTEXT_SWITCH = 1
         self.new_plan = Plan.read_plan_from_file(self.path_log)
         self.pr = ProcessRunner.get_process_runner(self.new_plan)
         self.pr.ipt = ipt

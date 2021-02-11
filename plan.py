@@ -81,9 +81,9 @@ class Plan:
         num_processes = len(ps)
         plan_w_placeholder = []
         last_picked = None
-        next_pick = None
 
         for i in range(sum_tasks):
+            # pick the next task
             available_processes = set(range(num_processes)) - set([last_picked])
             if len(available_processes) == 0:
                 available_processes = {0}
@@ -97,8 +97,6 @@ class Plan:
                 num_processes -= 1
             last_picked = p_to_pick
 
-
-
         assert len(ps) == 0
 
         # fix references
@@ -110,9 +108,7 @@ class Plan:
                 if t.task_id == el.task_id:
                     plan.append(t)
 
-
         return plan
-
 
     @staticmethod
     def generate_buffer_list(process_task_list, min_max) -> [int]:
@@ -127,7 +123,7 @@ class Plan:
             if i == len(process_task_list) -1:
                 continue
             length_all = sum(process)
-            buffers.append(length_all * buffer_percentage)
+            buffers.append(int(length_all * buffer_percentage))
 
         return buffers
 
@@ -150,7 +146,6 @@ class Plan:
             time += task.length_plan
             if task.process_id != -1:
                 deadlines[task.process_id] = time
-
 
         for i in range(len(buffer_list)):
             deadlines[i] += buffer_list[i]

@@ -1,5 +1,5 @@
 from task import Task
-
+import config
 
 class TrackingEvent:
     def __init__(self, t: Task, time_stamp: int, type_event: 'str'):

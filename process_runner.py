@@ -1,14 +1,14 @@
 from typing import List
+
+from config import COST_CONTEXT_SWITCH
 from task import Task
 from process import Process
 from thresholder import Threshold
 from tracking import Tracker
 from vrm import VRM
 from plan import Plan
+import config
 
-
-log = False
-COST_CONTEXT_SWITCH = None
 
 
 class ProcessRunner:
@@ -42,7 +42,7 @@ class ProcessRunner:
         self.time = 0
         self.cost_context_switch = COST_CONTEXT_SWITCH
 
-        if log is True:
+        if config.log is True:
             self.tick_log = open(tick_log, 'w')
             self.log_thresh = open(thresh_log, 'w')
             self.log_thresh_pure = open(thresh_log_pure, 'w')
@@ -149,6 +149,7 @@ class ProcessRunner:
         [TODO] Let process only run amount of time that other task has available
         """
         self.tracking.preempte_task(self.time, self.cur_task)
+        preempted_task = self.cur_task
 
         cur_task_id = self.cur_task.task_id
         cur_process_id = self.cur_task.process_id
@@ -169,6 +170,10 @@ class ProcessRunner:
         self.time += self.cost_context_switch
         self.tracking.start_task(self.time, self.cur_task)
         print(f'Task ({cur_process_id},{cur_task_id}) was moved to plan index {next_task_index} before ({self.plan[next_task_index].process_id},{self.plan[next_task_index].task_id}) ')
+
+        # mark the task as already preempted
+        preempted_task.was_preempted = True
+        
 
     def singal_prediction_failure(self):
         """

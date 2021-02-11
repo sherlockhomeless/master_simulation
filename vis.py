@@ -3,7 +3,7 @@ from os import listdir
 from typing import List
 import matplotlib.pyplot as plt
 
-from sim import INS_PER_TICK
+from config import INS_PER_TICK
 
 """
 Thrshold logging done in files of format thresh_[PROCESS_ID].log

@@ -1,7 +1,5 @@
 import numpy as np
-
-sigma = None
-ipt = None
+import config
 
 
 class Task:
@@ -12,14 +10,13 @@ class Task:
 
     def __init__(self, length_plan, process_id, task_id, length_real=None):
         assert type(length_plan) is int
-        assert length_plan >= ipt
 
         self.length_plan_unchanged = length_plan
         self.length_plan = length_plan  # decreases
         self.run_instructions = 0  # increases
         if length_real is None:
             self.length_real = int(np.random.normal(
-                length_plan, length_plan/100 * sigma, 1))
+                length_plan, length_plan/100 * config.task_sigma, 1))
         else:
             self.length_real = length_real
         self.process_id = process_id
@@ -67,10 +64,9 @@ class Task:
         """
         If a task has finished, it has to return the amount of instructions it has overdone so those can be added to another task
         """
-
         assert self.length_real <= 0
-
         return -(self.length_real)
+
     def get_late_instructions(self, ins) -> int:
         """
         Helper method, that helps get the instructions a Task is late. Helps to decide if all instructions of a tick add to lateness or just some part of them

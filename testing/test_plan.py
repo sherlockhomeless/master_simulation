@@ -2,9 +2,7 @@ import unittest
 from plan import Plan
 from task import Task
 import task
-from random import randint
-from test_process import generate_test_process, generate_test_task
-
+import config
 
 
 def generate_test_plan() -> Plan:
@@ -27,11 +25,7 @@ def generate_test_plan() -> Plan:
 
 
 class TestPlan(unittest.TestCase):
-    task.ips = -1
-    task.sigma = 1.1
-
-    def test_plan_generation(self):
-        generate_test_plan()
+    config.INS_PER_TICK = 10
 
     def test_generate_tasks_for_processes(self):
         tasks_pp = [10,20,30]
@@ -39,9 +33,7 @@ class TestPlan(unittest.TestCase):
         process_tasks = Plan.generate_tasks_for_processes(tasks_pp, 10, 100)
         num_all_tasks = 0
         for tasks in process_tasks:
-             num_all_tasks += len(tasks)
-
-
+            num_all_tasks += len(tasks)
         self.assertEqual(sum_tasks, num_all_tasks)
 
     def test_generate_plan(self):
@@ -60,22 +52,10 @@ class TestPlan(unittest.TestCase):
         # right number?
         self.assertEqual(p.number_all_proceses, num_processes)
 
-        # right references?
-        first_task_plan = p.task_list[0]
-        first_task_in_p = None
-        for process in p.processes:
-            first_task_process = process.tasks[0]
-            if first_task_plan.task_id == first_task_process.task_id:
-                first_task_in_p = first_task_process
-
-        self.assertTrue(first_task_in_p is first_task_plan)
-
-
     def test_generate_tasks_for_processes(self):
         # python3 -m  unittest test_plan.TestPlan.test_generate_tasks_for_processes
         length_per_process = [10,20,25]
         min_len, max_len = 10, 20
-
 
         processes = Plan.generate_tasks_for_processes(length_per_process, min_len, max_len)
 
@@ -94,15 +74,16 @@ class TestPlan(unittest.TestCase):
         tasks = [[],[]]
         number_tasks = 4
         for x in range(number_tasks):
-            tasks[0].append(Task(0, 0, 0))
-            tasks[1].append(Task(1, 1, 1))
+            tasks[0].append(Task(0, 0, x))
+            tasks[1].append(Task(1, 1, x))
 
         plan = Plan.generate_realistic_plan(tasks)
 
+        self.assertEqual(number_tasks * 2, len(plan))
         for x in range(number_tasks*2-1):
             self.assertTrue(plan[x].process_id != plan[x+1].process_id)
 
-        tasks = [[Task(0,0,0),  Task(0,0,0), Task(0,0,0)], [Task(1,1,1)]]
+        tasks = [[Task(0,0,0),  Task(0,0,1), Task(0,0,2)], [Task(1,1,3)]]
         plan = Plan.generate_realistic_plan(tasks)
 
         self.assertTrue(plan[0].process_id != plan[1].process_id)
@@ -110,8 +91,8 @@ class TestPlan(unittest.TestCase):
 
     def test_generate_buffer_list(self):
         # python3 -m  unittest test_plan.TestPlan.test_generate_buffer_list
-        tasks = [[Task(10,0,0), Task(10,0,0)], [Task(100,1,1)]]
-        buffers = Plan.generate_buffer_list(tasks, (100,100))
+        tasks = [[Task(10, 0, 0), Task(10, 0, 0)], [Task(100, 1, 1)], [Task(10, -1, -1)]]
+        buffers = Plan.generate_buffer_list(tasks, (100, 100))
 
         self.assertEqual(20, buffers[0])
         self.assertEqual(100, buffers[1])
