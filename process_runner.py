@@ -10,7 +10,6 @@ from plan import Plan
 import config
 
 
-
 class ProcessRunner:
     def __init__(self, plan, tick_log="logs/tick.log", thresh_log="logs/per_tick_thresh_sum.log", thresh_log_pure="logs/per_tick_thresh_pure.log", ipt=1, log=False, breakpoint=None):
         """
@@ -27,22 +26,25 @@ class ProcessRunner:
         assert type(plan) is Plan
 
         self.ipt: int = ipt
-        self.plan: List[Task] = plan.task_list
+        self.task_list: List[Task] = plan.task_list
         self.processes: List[Process] = plan.processes
         self.number_processes: int = len(self.processes)
         self.number_tasks = plan.number_all_tasks
-        self.tracking = Tracker(self.number_processes,
-                                self.number_tasks, self.processes)
-        self.thresholds = [Threshold(p) for p in self.processes]
-        self.cur_task = self.plan[0]
+        self.tracking = None
+        self.cur_task = self.task_list[0]
         self.cur_process = self.processes[self.cur_task.process_id]
         self.cur_process_id = self.cur_process.process_id
+        self.vrm = VRM(self.task_list)
+
+        self.t1 = None
+        self.t2 = None
+        self.t_m2 = None
+
         self.finished_tasks = 0
-        self.vrm = VRM(self.plan)
         self.time = 0
         self.cost_context_switch = COST_CONTEXT_SWITCH
 
-        if config.log is True:
+        if config.LOG is True:
             self.tick_log = open(tick_log, 'w')
             self.log_thresh = open(thresh_log, 'w')
             self.log_thresh_pure = open(thresh_log_pure, 'w')
@@ -61,7 +63,7 @@ class ProcessRunner:
         cur_process = self.cur_process
         cur_process_id = cur_process.process_id
         cur_task_id = cur_task.task_id
-        cur_thresholds = self.thresholds[cur_process_id]
+
         ins = self.ipt
         # runs the full set of instructions on the current task
         cur_task.run(ins)
@@ -70,9 +72,8 @@ class ProcessRunner:
             instructions_left_in_tick = cur_task.get_overdone_instructions()
 
             if cur_task.has_task_finished_early():
-                current_t_m2 = cur_thresholds.t_minus2
                 earliness = cur_task.get_early_instructions(instructions_left_in_tick)
-                if earliness < current_t_m2:
+                if earliness < self.t_m2:
                     self.vrm.signal_t_m2(earliness, cur_process_id, cur_task_id)
 
             self.pick_next_task()
@@ -80,16 +81,11 @@ class ProcessRunner:
 
         elif cur_task.is_task_late():
             instructions_run = cur_task.run_instructions
-            cur_t1, cur_t2 = cur_thresholds.t1, cur_thresholds.t2
+            cur_t1, cur_t2 = self.t1, self.t2
             if instructions_run > cur_t1:
                 # preempt if not already preempted
                 if not cur_task.was_preempted:
                     self.preempt_current_process()
-
-
-
-
-
 
 
 
@@ -128,7 +124,7 @@ class ProcessRunner:
         # if cur_task.is_late and self.transgresses_t1():
         #     self.preempt_current_process()
 
-        if log:
+        if config.LOG:
             self.write_thresh_log()
             self.write_tick_log()
 
@@ -148,28 +144,53 @@ class ProcessRunner:
         [TODO] Supress another instant preemption
         [TODO] Let process only run amount of time that other task has available
         """
-        self.tracking.preempte_task(self.time, self.cur_task)
-        preempted_task = self.cur_task
+        def find_slot_for_preemption(start_search_index, assign_free_slots = False):
+            """
+            :param start_search_index: start searching from here
+            :param assign_free_slots: Enable/Disable looking for free slots
+            :return: Index of the task slot found in the plan
+            """
+            next_available_slot = None
+            while next_available_slot is None:
+                for i in range(start_search_index, len(self.task_list)):
+                    if self.task_list[i].process_id == -1 and assign_free_slots:
+                        return i
+                    elif self.task_list[i].process_id == cur_task_id:
+                        return i
+            raise IndexError
 
+
+        # --- convenience variables ---
+        preempted_task = self.cur_task
         cur_task_id = self.cur_task.task_id
         cur_process_id = self.cur_task.process_id
         next_task_index = self.search_task_following(cur_task_id)
-        next_task = self.plan[next_task_index]
-        plan = self.plan
-        # we look for a slot in the plan that either is assigned to the same process id or is free (=> -1)
-        while next_task.process_id != self.cur_task.process_id and next_task.process_id != -1:
-            try:
-                next_task_index += 1
-                next_task = self.plan[next_task_index]
-            except IndexError:
-                print("task was last task")
+        shifted_task = self.task_list[next_task_index]
+        number_of_preemptions = len(preempted_task.shares_slot)
 
-        self.plan.insert(next_task_index, self.cur_task)
-        self.plan = self.plan[1:]
-        self.cur_task = self.plan[0]
+        # looking for a slot in the plan that is either of the same process or free
+        while len(preempted_task.shares_slot) != number_of_preemptions:
+            insertion_index = find_slot_for_preemption(next_task_index)
+            insertion_task = self.task_list[insertion_index]
+            # information for calculating t1
+            if insertion_task.process_id == cur_process_id:
+                preempted_task.shares_slot(insertion_task)
+            else:
+                
+
+
+        # --- inserting preempted-task before slot ---
+        self.task_list.insert(next_task_index, self.cur_task)
+
+        # --- move plan forward and set timer ---
+        self.cur_task.was_preempted = True
+        self.task_list = self.task_list[1:]
+        self.cur_task = self.task_list[0]
         self.time += self.cost_context_switch
-        self.tracking.start_task(self.time, self.cur_task)
-        print(f'Task ({cur_process_id},{cur_task_id}) was moved to plan index {next_task_index} before ({self.plan[next_task_index].process_id},{self.plan[next_task_index].task_id}) ')
+        print(f'Task ({cur_process_id},{cur_task_id}) was moved to plan index {next_task_index} before ({self.task_list[next_task_index].process_id},{self.task_list[next_task_index].task_id}) ')
+
+
+
 
         # mark the task as already preempted
         preempted_task.was_preempted = True
@@ -188,11 +209,11 @@ class ProcessRunner:
         ! shortens the plan
         """
         self.tracking.end_task( self.time, self.cur_task)
-        self.plan = self.plan[1:]
-        if len(self.plan) == 0:
+        self.task_list = self.task_list[1:]
+        if len(self.task_list) == 0:
             return
         self.time += self.cost_context_switch
-        self.cur_task = self.plan[0]
+        self.cur_task = self.task_list[0]
         self.cur_process = self.processes[self.cur_task.process_id]
         self.tracking.start_task( self.time, self.cur_task)
 
@@ -204,25 +225,32 @@ class ProcessRunner:
         cur_pid = self.cur_process.process_id
         cur_task = self.cur_task
 
-        cur_thresh = self.thresholds[cur_pid]
-        left = self.tracking.instructions_left_per_process(cur_pid)
-        planed = self.tracking.get_instrcutions_planned_per_p(cur_pid)
-        cur_thresh.update_thresholds(
-            instructions_left=left, instructions_planned=planed, cur_task=cur_task)
-        if log:
+        if not cur_task.was_preempted:
+            instructions_planed = cur_task.length_plan_unchanged
+        else:
+            instructions_planed = cur_task.shares_slot[0].length_plan_unchanged
+
+        self.t1 = Threshold.calc_t1(instructions_planed)
+
+
+        self.t2 = Threshold.calc_t2()
+
+        self.t_m2 =Threshold.calc_t_minus(self.t2)
+
+        if config.LOG:
             self.write_thresh_log()
 
     def has_finished(self) -> bool:
-        return False if len(self.plan) > 0 else True
+        return False if len(self.task_list) > 0 else True
 
     def search_task_following(self, cur_id) -> int:
         """
         Returns the index of the task that is following the task with the given id according to the plan
         """
-        for i, t in enumerate(self.plan):
+        for i, t in enumerate(self.task_list):
             if t.task_id == cur_id:
                 return i+1
-        return len(self.plan)
+        return len(self.task_list)
 
     def write_plan_to_file(self, path):
         meta = f'{len(self.processes)};'
@@ -231,7 +259,7 @@ class ProcessRunner:
             meta += f'{i},{i},{p.buffer},{p.deadline};'
 
         tasks_s = ''
-        for task in self.plan:
+        for task in self.task_list:
             tasks_s += f'{task.process_id},{task.process_id},{task.task_id},{task.length_plan},{task.length_real};'
 
         plan_s = meta + ";;" + tasks_s
@@ -240,7 +268,7 @@ class ProcessRunner:
             f.write(plan_s)
             # now again in human readable ;)
             f.write('\n\n#########\n\n')
-            for task in self.plan:
+            for task in self.task_list:
                 f.write(
                     f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
 
@@ -261,7 +289,7 @@ class ProcessRunner:
             f'{str(self.cur_task)} {self.tracking.get_current_tick()} \n')
 
     def __del__(self):
-        if log is False:
+        if config.LOG is False:
             return
         self.tick_log.close()
 

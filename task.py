@@ -8,7 +8,7 @@ class Task:
     The real length is determined by a random variable
     """
 
-    def __init__(self, length_plan, process_id, task_id, length_real=None):
+    def __init__(self, length_plan, process_id, task_id, length_real=None, start=0, end=0):
         assert type(length_plan) is int
 
         self.length_plan_unchanged = length_plan
@@ -21,12 +21,15 @@ class Task:
             self.length_real = length_real
         self.process_id = process_id
         self.task_id = task_id
+        self.start_time = start
+        self.end_time = end
 
         self.task_finished = False
         self.finished_early = False
         self.turned_late = False
         self.is_late = False
         self.was_preempted = False
+        self.shares_slot = []  # Reference to other task in which self is inserted to
 
     def run(self, ins):
         '''
@@ -80,6 +83,18 @@ class Task:
         """
         assert self.length_real < self.length_plan
         return self.length_plan - (self.length_real - unused_instructions)
+
+    def set_times(self, cur_time) -> int:
+        """
+        Sets the start and endtime of the current task, returns the planned endtime
+        """
+        self.start_time = cur_time
+        self.end_time = cur_time + self.length_plan
+        return self.end_time
+
+    def share_slot(self, other_task: 'Task'):
+        assert other_task.task_id == self.task_id
+        self.shares_slot.append(other_task)
 
     def __str__(self):
         return f'(process: {self.process_id}, id: {self.task_id}, plan_len: {self.length_plan}, real_len:{self.length_real})'

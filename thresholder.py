@@ -45,27 +45,45 @@ class Threshold:
         return t1
 
     @staticmethod
-    def calc_t2(usable_buffer, length_plan, stress=0, load) -> int:
+    def calc_t2(buffer, instructions_planned_task, instructions_done_process, instructions_sum_process, t1, stress=0, load_free=1) -> int:
         """
+        :param buffer: buffer given by the VRM
+        :param instructions_planned_task: sum of all instructions of a process
+        :param instructions_done_process: sum of all already executed instructions
+        :param instructions_sum_process: sum of all planned task instructions
+        :param t1: current calculated t1
+        :param stress: system level stress factor
+        :param load_free: Percentage of unallocated time on node
+
         Triggers PredictionFailure to VRM. Conditions:
         1. Individual Task was extremly off => in current implementation this condition holds if one task takes the amount of two slots of the assigned time
         2. Whole Process is off by significant amount proportional to state of progress
 
         [TODO] static threshhold depending on stress level
         """
+        available_buffer = buffer * load_free * config.ASSIGNABLE_BUFFER
+        usable_buffer = available_buffer * (instructions_sum_process/instructions_done_process)
 
-        t2_relative_buffer = self.t1 + usable_buffer + stress * self.ipt - self.reschedule_time
-        t2_cap_lateness = self.CAP_LATENESS * length_plan
-        t2_process_state = t2_cap_lateness  # IMPLEMENT
-        t2 = min(t2_relative_buffer, t2_cap_lateness, t2_process_state)
-        t2 = int(t2)
-        assert self.t1 < t2
-        return t2 if t2 > self.t1 else self.t1 * self.SPACER_CONSTANT
+        t2_buffer_cap = t1 + usable_buffer + (stress * config.INS_PER_TICK) - config.RESCHEDULE_TIME
+        t2_relative = instructions_planned_task * config.CAP_LATENESS
+        t2_spacer = t1 + config.SPACER_CONSTANT
+
+        t2_task = max(t2_relative, t2_spacer)
+        t2_task_capped = min(t2_task, t2_buffer_cap)
+
+        # [TODO]: Implement
+        t2_process = t2_task_capped
+
+        t2 = min(t2_process, t2_task_capped)
+
+        assert t1 < t2
+
+        return t2
 
     @staticmethod
-    def calc_t_minus(instructions_planned):
-        raise NotImplementedError
-        return int(-1 * self.t2 * 2)
+    def calc_t_minus(t2):
+        # [TODO]: Implement
+        return int(-1 * t2 * 2)
 
     @staticmethod
     def calc_usable_buffer(instructions_planned, instructions_left):

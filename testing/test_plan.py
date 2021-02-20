@@ -104,3 +104,26 @@ class TestPlan(unittest.TestCase):
 
         self.assertEqual(20, deadsies[0])
         self.assertEqual(35, deadsies[1])
+
+
+    def test_start_ending_times(self):
+        config.COST_CONTEXT_SWITCH = 5
+        
+        t1 = Task(10, 0, 0)
+        t2 = Task(20, 0, 0)
+        t3 = Task(5, 0, 0)
+        Plan.assign_start_end_times((t1,t2,t3))
+
+        # task 1 start at 5, end at 15
+        # task 2 start 20, end at 40
+        # task 3 start at 45, end at 50
+
+        self.assertEqual(45, t3.start_time)
+        self.assertEqual(50, t3.end_time)
+
+        # check if none 0 based times also work
+        t1.start_time = 50
+        Plan.assign_start_end_times((t1,t2,t3))
+
+        self.assertEqual(95, t3.start_time)
+        self.assertEqual(100, t3.end_time)

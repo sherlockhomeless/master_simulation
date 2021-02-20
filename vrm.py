@@ -34,11 +34,11 @@ class VRM:
         return self.plan
 
     def signal_t2(self, time_stamp, t: "Task"):
-        self.received_signals.append((time_stamp, t, "t1"))
+        self.received_signals.append((time_stamp, t, "t2"))
          # [TODO]: Implement calculating new plan
 
     def signal_t_m2(self,time_stamp, t: "Task"):
-        self.received_signals.append((time_stamp, t, "t1"))
+        self.received_signals.append((time_stamp, t, "t_m2"))
          # [TODO]: Implement calculating new plan
 
     def get_last_signal(self):

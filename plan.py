@@ -2,6 +2,7 @@ from random import randint, choice
 from copy import deepcopy
 from task import Task
 from process import Process
+import config
 from typing import List, Set, Dict, Tuple
 
 
@@ -19,7 +20,7 @@ class Plan:
         self.number_all_proceses = len(self.processes)
 
     @staticmethod
-    def generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, file_path=None) -> 'Plan':
+    def generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, context_switch_cost_enabled = False, file_path=None) -> 'Plan':
 
         assert free_time >= 0
         # --- generate random parameters ---
@@ -37,6 +38,7 @@ class Plan:
         tasks_per_process = Plan.generate_tasks_for_processes(number_tasks_per_process, min_len_task, max_len_task)
 
         tasks_for_plan = Plan.generate_realistic_plan(tasks_per_process)
+        Plan.assign_start_end_times(tasks_for_plan)
 
         buffer_list = Plan.generate_buffer_list(tasks_per_process, (min_buffer, max_buffer))
 
@@ -152,6 +154,20 @@ class Plan:
 
         return deadlines
 
+    @staticmethod
+    def assign_start_end_times(tasks):
+        """
+        Sets the start and end times for the list of tasks provided
+        The start of the first tasks sets the time frame
+        : param tasks: [Tasks]
+        """
+        context_switch = config.COST_CONTEXT_SWITCH
+        cur_time = tasks[0].start_time
+
+        for cur_task in tasks:
+            cur_time += context_switch
+            cur_time = cur_task.set_times(cur_time)
+
 
     @staticmethod
     def find_last_task_ending(plan: List[Task], num_processes: int) -> List[int]:
@@ -260,8 +276,8 @@ class Plan:
             # process information
             for p in range(num_processes):
                 p_info = process_data[p]
-                buffer = p_info.split(',')[2]
-                deadline = p_info.split(',')[3]
+                buffer = int(p_info.split(',')[2])
+                deadline = int(p_info.split(',')[3])
                 process_info.append((buffer, deadline))
 
             # task information

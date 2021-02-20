@@ -26,11 +26,11 @@ DEADLINE = 1.1  # total time * DEADLINE = Time to be finished
 FREE_TIME = 10 #  Percentage of the plan that is not assigned
 NUMBER_PROCESSES = 3
 TASK_MIN_LEN = INS_PER_TICK
-TASK_MAX_LEN = INS_PER_TICK * 1000
-PROCESS_MIN_LEN = 10
-PROCESS_MAX_LEN = 10
-BUFFER_MIN = 2
-BUFFER_MAX = 10
+TASK_MAX_LEN = INS_PER_TICK * 100
+PROCESS_MIN_LEN = 90 # Minimum amount of tasks in process
+PROCESS_MAX_LEN = 100 # Maximum amount of tasks in process
+BUFFER_MIN = 2 # Minimal buffer size in Integer => 2 = 2%
+BUFFER_MAX = 10 # Maximal buffer size in Integer => 10 = 10%
 
 # Threshold-Config
 # t1
@@ -44,5 +44,5 @@ RELAX = 1
 STRESS = 1
 CAP_LATENESS = 1.5
 assert SIGMA_T1 < CAP_LATENESS
-CONSUMABLE_BUFFER = 0.5
-SPACER_CONSTANT = 2
+ASSIGNABLE_BUFFER = 0.5
+T2_SPACER = MAX_TICKS_OFF * INS_PER_TICK

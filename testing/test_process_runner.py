@@ -27,7 +27,7 @@ class TestProcessRunner(unittest.TestCase):
         self.pr.ipt = ipt
 
     def test_search_task_following(self):
-        self.path_log = "testing/plan_preempt.log"
+        self.path_log = "plan_preempt.log"
         self.set_up()
         next_id = self.pr.search_task_following(0)
         self.assertEqual(1, next_id)
@@ -36,7 +36,7 @@ class TestProcessRunner(unittest.TestCase):
 
 
     def test_t1_is_triggering(self):
-        self.path_log = "testing/plan_preempt.log"
+        self.path_log = "plan_preempt.log"
         self.set_up()
         self.pr.run_tick()
         change = self.pr.tracking.change_log
@@ -55,7 +55,7 @@ class TestProcessRunner(unittest.TestCase):
         """
         self.path_log = "testing/plan_preempt.log"
         self.set_up()
-        plan = self.pr.plan
+        plan = self.pr.task_list
         t = self.pr.cur_task
         start_index = plan.index(t)
 
