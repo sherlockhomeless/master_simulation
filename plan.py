@@ -27,9 +27,9 @@ class Plan:
         number_tasks_per_process = [[] for x in range(num_processes + 1)] # length of each process as int
         sum_all_tasks_of_processes = 0
         for p in range(num_processes):
-             number_tasks = randint(min_len_process, max_len_process)
-             number_tasks_per_process[p] = number_tasks
-             sum_all_tasks_of_processes += number_tasks
+            number_tasks = randint(min_len_process, max_len_process)
+            number_tasks_per_process[p] = number_tasks
+            sum_all_tasks_of_processes += number_tasks
 
         num_free_time_tasks = int(sum_all_tasks_of_processes / 100 * free_time)
         number_tasks_per_process[-1] = num_free_time_tasks
@@ -44,7 +44,7 @@ class Plan:
 
         deadline_list = Plan.generate_deadlines(tasks_for_plan, buffer_list)
         processes = []
-        # create process inst   ances
+        # create process instances
         for i in range(num_processes):
             processes.append(Process(tasks_per_process[i], buffer_list[i], deadline_list[i]))
 
@@ -113,7 +113,7 @@ class Plan:
         return plan
 
     @staticmethod
-    def generate_buffer_list(process_task_list, min_max) -> [int]:
+    def generate_buffer_list(process_task_list, min_max: (int, int), has_unallocated=False) -> [int]:
         """
         : param process_task_list: [[task0_p0, task1_p0,...],]
         : param min_max: tuple(min_buffer, max_buffer)
@@ -122,7 +122,7 @@ class Plan:
         buffers = []
         buffer_percentage = randint(min_max[0], min_max[1])/100
         for i, process in enumerate(process_task_list):
-            if i == len(process_task_list) -1:
+            if i == len(process_task_list) - 1 and has_unallocated:
                 continue
             length_all = sum(process)
             buffers.append(int(length_all * buffer_percentage))
@@ -206,7 +206,6 @@ class Plan:
                 task_id += 1
 
             tasks_per_process.append(cur_task_list)
-
 
         return tasks_per_process
 
@@ -301,6 +300,30 @@ class Plan:
 
             read_plan = Plan(task_list, process_list)
             return read_plan
+
+    @staticmethod
+    def generate_custom_plan(tasks: List[Task]) -> "Plan":
+        """
+        Generates a plan conforming to the syntax provided using the tasks given in tasks
+        :param tasks: tasks to construct Plan
+        :return:
+        """
+
+        Plan.assign_start_end_times(tasks)
+
+        highest_pid = max([x.process_id for x in tasks])
+        tasks_per_p = [[] for x in range(highest_pid+1)]
+        for t in tasks:
+            tasks_per_p[t.process_id].append(t)
+
+        buffers = Plan.generate_buffer_list(tasks_per_p, (config.BUFFER_MIN, config.BUFFER_MAX))
+        deads = Plan.generate_deadlines(tasks, buffers)
+
+        ps = []
+        for i in range(len(deads)):
+            ps.append(Process(tasks_per_p[i], buffers[i], deads[i]))
+
+        return Plan(tasks, ps)
 
     def __len__(self):
         return len(self.task_list)

@@ -1,7 +1,7 @@
 from plan import Plan
 
 
-class PredictionFailure():
+class PredictionFailure:
     def __init__(self, process_id: int, transgression: float):
         assert type(transgression) is float
         self.process_id = process_id
@@ -33,11 +33,23 @@ class VRM:
 
         return self.plan
 
-    def signal_t2(self, time_stamp, t: "Task"):
+    def signal_t2(self, time_stamp: int, t: "Task"):
+        """
+        Signals T2
+        :param time_stamp: current time at which t2 was signaled
+        :param t: Task which caused signal
+        :return:
+        """
         self.received_signals.append((time_stamp, t, "t2"))
          # [TODO]: Implement calculating new plan
 
     def signal_t_m2(self,time_stamp, t: "Task"):
+        """
+        Signals T-2
+        :param time_stamp: current time at which t-2 was signaled
+        :param t: Task which caused signal
+        :return:
+        """
         self.received_signals.append((time_stamp, t, "t_m2"))
          # [TODO]: Implement calculating new plan
 

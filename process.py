@@ -28,9 +28,10 @@ class Process:
         self.deadline = int(deadline)
 
         # state tracking
-        self.instructions_executed = 0
-        self.instructions_left = sum(tasks)
-        self.number_tasks = len(tasks)
+        self.instructions_executed = 0  # count of all instructions already done
+        self.instructions_left = sum(tasks)  # instructions that are left according to plan
+        self.process_length = self.instructions_left  # none changing amount of instructions
+        self.number_tasks = len(tasks)  # number of all tasks of process
         self.threshold_state = 0  # 0 => no thresholds breaches, -2 => t_m2, 1/2 => t1/t2
 
         self.finished_process = False

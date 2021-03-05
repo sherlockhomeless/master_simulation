@@ -29,3 +29,23 @@ class TestTask(unittest.TestCase):
         y = np.array(real_values)
         plt.bar(range(0,200), y)
         plt.show()
+
+    def test_share_slot(self):
+        t1, t2, t3 = Task(1, 0, 0), Task(1, 0, 1), Task(1, 0, 2)
+        t1.preempt(t2)
+
+        self.assertTrue(len(t1.shares_slot_with) == 1)
+        self.assertTrue(t2.shares_slot is True)
+        self.assertTrue(t2.shares_slot_with == [])
+
+        t1.preempt(t3)
+
+        self.assertTrue(len(t1.shares_slot_with) == 2)
+        self.assertTrue(len(t2.shares_slot_with) == 1)
+        self.assertTrue(len(t3.shares_slot_with) == 0)
+
+
+
+
+
+
