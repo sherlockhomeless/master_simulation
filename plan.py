@@ -5,6 +5,8 @@ from process import Process
 import config
 from typing import List, Set, Dict, Tuple
 
+# TODO: Task-IDs in Plan must be increasing
+
 
 class Plan:
     def __init__(self, task_list: List[Task], processes: List[Process]):
@@ -19,19 +21,45 @@ class Plan:
         self.number_all_tasks = self.get_number_all_tasks()
         self.number_all_proceses = len(self.processes)
 
+        self.index = 0  # for iterating over the class
+
     @staticmethod
-    def generate_plan(num_processes, min_len_process, max_len_process, min_len_task, max_len_task, min_buffer, max_buffer, free_time, context_switch_cost_enabled = False, file_path=None) -> 'Plan':
+    def generate_plan(context_switch_cost_enabled=False, file_path=None) -> 'Plan':
+
+        def fix_ids(task_list) -> [Task]:
+            """
+            Assures that all free slots have also task_id = -1 & ensures tasks have increasing tids
+            :param task_list:
+            :return:
+            """
+            counter = 0
+            for el in task_list:
+                if el.process_id != -1:
+                    el.task_id = counter
+                    counter += 1
+                else:
+                    el.task_id = -1
+            return task_list
+
+        num_processes = config.NUMBER_PROCESSES
+        min_len_process = config.PROCESS_MIN_LEN
+        max_len_process = config.PROCESS_MAX_LEN
+        min_len_task = config.TASK_MIN_LEN
+        max_len_task = config.TASK_MAX_LEN
+        min_buffer = config.BUFFER_MIN
+        max_buffer = config.BUFFER_MAX
+        free_time = config.FREE_TIME
 
         assert free_time >= 0
         # --- generate random parameters ---
-        number_tasks_per_process = [[] for x in range(num_processes + 1)] # length of each process as int
+        number_tasks_per_process = [[] for x in range(num_processes + 1)]  # length of each process as int
         sum_all_tasks_of_processes = 0
         for p in range(num_processes):
             number_tasks = randint(min_len_process, max_len_process)
             number_tasks_per_process[p] = number_tasks
             sum_all_tasks_of_processes += number_tasks
 
-        num_free_time_tasks = int(sum_all_tasks_of_processes / 100 * free_time)
+        num_free_time_tasks = int(sum_all_tasks_of_processes * free_time)
         number_tasks_per_process[-1] = num_free_time_tasks
 
         # generating actual tasks per process
@@ -48,6 +76,8 @@ class Plan:
         for i in range(num_processes):
             processes.append(Process(tasks_per_process[i], buffer_list[i], deadline_list[i]))
 
+        tasks_for_plan = fix_ids(tasks_for_plan)
+
         assert len(deadline_list) == len(buffer_list)
         assert sum_all_tasks_of_processes + num_free_time_tasks == len(tasks_for_plan)
 
@@ -61,11 +91,11 @@ class Plan:
         print(f'plan with {len(plan)} tasks created')
         return plan
 
-
     @staticmethod
     def generate_realistic_plan(processes: List[List[Task]]) -> List[Task]:
         """
-        Mixes up the plan in such a way that there is some kind of meaningful switching between tasks for different processes/jobs. The Task-List on the last index is for free slots
+        Mixes up the plan in such a way that there is some kind of meaningful switching between tasks for different processes/jobs.
+        The Task-List on the last index is for free slots
 
         :param processes: List of List of Tasks, that represent processes
         :return: List of Tasks that switches as much as possible between Tasks
@@ -110,6 +140,7 @@ class Plan:
                 if t.task_id == el.task_id:
                     plan.append(t)
 
+        assert sum_tasks == len(plan)
         return plan
 
     @staticmethod
@@ -122,6 +153,8 @@ class Plan:
         buffers = []
         buffer_percentage = randint(min_max[0], min_max[1])/100
         for i, process in enumerate(process_task_list):
+            if process[0].process_id == -1:
+                continue
             if i == len(process_task_list) - 1 and has_unallocated:
                 continue
             length_all = sum(process)
@@ -149,7 +182,7 @@ class Plan:
             if task.process_id != -1:
                 deadlines[task.process_id] = time
 
-        for i in range(len(buffer_list)):
+        for i in range(len(deadlines)):
             deadlines[i] += buffer_list[i]
 
         return deadlines
@@ -276,8 +309,7 @@ class Plan:
             for p in range(num_processes):
                 p_info = process_data[p]
                 buffer = int(p_info.split(',')[2])
-                deadline = int(p_info.split(',')[3])
-                process_info.append((buffer, deadline))
+                process_info.append((buffer, None))
 
             # task information
             task_strings = all.split(';')
@@ -325,5 +357,44 @@ class Plan:
 
         return Plan(tasks, ps)
 
+    @staticmethod
+    def write_plan_to_file(plan: "Plan", path: str):
+        meta = f'{len(plan.processes)};'
+        # meta = f'{len(self.processes)},{len(self.plan)};;'
+        for i, p in enumerate(plan.processes):
+            meta += f'{i},{p.buffer};'
+
+        tasks_s = ''
+        for task in plan.task_list:
+            tasks_s += f'{task.process_id},{task.task_id},{task.length_plan},{task.length_real};'
+
+        plan_s = meta + ";;" + tasks_s + '\n'
+        plan_s_byte = plan_s.encode('ascii')
+
+        with open(path, 'wb') as f:
+            f.write(plan_s_byte)
+
+        with open(path + "_readable", 'w') as f:
+            f.write(plan_s)
+            # now again in human readable ;)
+            f.write('\n\n#########\n\n')
+            f.write('pid - pid - tid - len_plan - len-real\n')
+            for task in plan.task_list:
+                f.write(
+                    f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
+            f.write('\n')
+
     def __len__(self):
         return len(self.task_list)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            next_t = self.task_list[self.index]
+            self.index += 1
+            return next_t
+        except IndexError:
+            raise StopIteration
+

@@ -1,4 +1,5 @@
 import logging
+from os.path import join
 
 
 # Global-Config
@@ -25,38 +26,39 @@ logger = logging.getLogger('all')
 
 
 # Admin-Config
+PROJECT_BASE = "/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation"
 WRITE_PLAN = "logs/plan.log"
 LOG_THRESHOLDS = "logs/thresholds_X.log" # X will be the number of the pid
 LOG_THRESHOLDS_PURE = "logs/thresholds_pure_X.log"
 TESTING = False
+JUST_WRITE_PLAN = False
 
 # Task-Config
 task_sigma = 0.25  # sigma for normal distribution for calculating real lenght of tasks
 
 # --- ProcessRunner Basic Config ---
 COST_CONTEXT_SWITCH = 0
-IPS = 1000  # was 4000000000
-HZ = 10  # should be 250
+IPS = 4000000000  # was 4000000000
+HZ = 250  # should be 250
 INS_PER_TICK = int(IPS/HZ)
-RESCHEDULE_TIME = IPS / 20
-LOAD = 1  # systemload
+RESCHEDULE_TIME = IPS * 10
 
 # --- Process Runner Behaviour Config ---
 # Discussed in Thesis; Determines if unallocated time slots are allowed to be assigned to preempted tasks
 INSERT_PREEMPTED_IN_FREE = False
 
 # Plan-Config
-JUST_GENERATE_PLAN = False
 MAX_BUFF_USAGE = 0.5
+TASK_SIGMA = 10
 DEADLINE = 1.1  # total time * DEADLINE = Time to be finished
-FREE_TIME = 10 #  Percentage of the plan that is not assigned
+FREE_TIME = 0.1  # Percentage of the plan that is not assigned
 NUMBER_PROCESSES = 3
 TASK_MIN_LEN = INS_PER_TICK
 TASK_MAX_LEN = INS_PER_TICK * 100
-PROCESS_MIN_LEN = 90 # Minimum amount of tasks in process
-PROCESS_MAX_LEN = 100 # Maximum amount of tasks in process
-BUFFER_MIN = 2 # Minimal buffer size in Integer => 2 = 2%
-BUFFER_MAX = 10 # Maximal buffer size in Integer => 10 = 10%
+PROCESS_MIN_LEN = 90  # Minimum amount of tasks in process
+PROCESS_MAX_LEN = 100  # Maximum amount of tasks in process
+BUFFER_MIN = 2  # Minimal buffer size in Integer => 2 = 2%
+BUFFER_MAX = 10  # Maximal buffer size in Integer => 10 = 10%
 
 # Threshold-Config
 # t1
@@ -68,12 +70,17 @@ SIGMA_T1 = 1.3
 
 # t2
 RELAX = 1
-STRESS = 1
+STRESS_PER_SIGNAL = 30 * HZ  # seconds until
 CAP_LATENESS = 1.5
 assert SIGMA_T1 < CAP_LATENESS
 ASSIGNABLE_BUFFER = 0.5
 T2_SPACER = MAX_TICKS_OFF * INS_PER_TICK
 T2_MAX_PREEMPTIONS = 5  # Max number a task is allowed to be preempted before Prediction Signal Failure
+T2_NODE_ENABLED = False
+T2_MINIMUM_USABLE_BUFFER = 0.05  # Minimum of the available buffer that is usable
+
+# Rescheduling
+PLAN_STRETCH_FACTOR = 0.05  # factor to adjust all tasks or processes after a prediction failure signal
 
 
 def update():

@@ -1,26 +1,9 @@
 import numpy as np
 import config
+from helper import InstructionCounter
 
 
 class Task:
-    class InstructionCounter:
-        def __init__(self):
-            self.instructions_task = 0
-            self.instructions_slot = 0
-
-        def run_instructions(self, ins: int):
-            self.instructions_task += ins
-            self.instructions_slot += ins
-
-        def run_instructions_slot(self, ins: int):
-            self.instructions_slot += ins
-
-        def run_instructions_task(self, ins: int):
-            self.instructions_task += ins
-
-        def __repr__(self):
-            return f'( t: {self.instructions_task}, s: {self.instructions_slot})'
-
     """
     Representation of a task of a process/job.
     The real length is determined by a random variable
@@ -31,10 +14,10 @@ class Task:
 
         self.length_plan_unchanged = length_plan
         self.length_plan = length_plan  # decreases
-        self.instruction_counter = Task.InstructionCounter()  # increases
+        self.instruction_counter = InstructionCounter()
         if length_real is None:
             self.length_real = int(np.random.normal(
-                length_plan, length_plan/100 * config.task_sigma, 1))
+                length_plan, length_plan/100 * config.TASK_SIGMA, 1))
         else:
             self.length_real = length_real
         self.process_id = process_id
@@ -99,7 +82,7 @@ class Task:
         return self.finished_early
 
     def is_task_late(self):
-        return self.turned_late or self.is_late
+        return self.is_late
 
     def get_overdone_instructions(self):
         """
@@ -120,7 +103,8 @@ class Task:
         Helper method that helps get keeps track of instructions, if a task finished early.
         """
         assert self.length_real < self.length_plan
-        return self.length_plan - (self.length_real - unused_instructions)
+        assert self.finished_early is True
+        return -self.length_plan
 
     def set_times(self, cur_time) -> int:
         """

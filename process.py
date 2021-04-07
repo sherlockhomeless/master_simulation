@@ -19,6 +19,7 @@ class Process:
 
         process_id = tasks[0].process_id
         self.process_id = process_id
+        self.tasks = tasks
 
         # global
         self.log = config.LOG
@@ -33,11 +34,21 @@ class Process:
         self.process_length = self.instructions_left  # none changing amount of instructions
         self.number_tasks = len(tasks)  # number of all tasks of process
         self.threshold_state = 0  # 0 => no thresholds breaches, -2 => t_m2, 1/2 => t1/t2
+        self.lateness = 0  # todo: update this number
 
         self.finished_process = False
 
     def __len__(self):
         return self.number_tasks
+
+    def update(self):
+        """
+        Updates the tracking data for the process
+        :return:
+        """
+        for t in self.tasks:
+            if t.length_real >= 0:
+                self.tasks.remove(t)
 
     @staticmethod
     def _generate_random_process(tasks=[], buffer=1,deadline=1, num_tasks=10, pid=0):

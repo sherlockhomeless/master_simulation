@@ -39,6 +39,7 @@ class Threshold:
             * max_global_deviation => is a global boundary that ensures that independant of the task details, a certain amount of ticks is not transgressed
             * max_local_deviation => is a local, relative boundary relating to the details of the task TODO: AND PROCESS
         '''
+        
         t1_relative_deviation = instructions_planned * config.SIGMA_T1
         t1_preemption_minimum = instructions_planned + config.NO_PREEMPTION
         relative_t1 = max(t1_relative_deviation, t1_preemption_minimum)
@@ -48,66 +49,97 @@ class Threshold:
         return t1
 
     @staticmethod
-    def calc_t2(buffer: int, instructions_planned_task: int, instructions_done_process: int,
-                instructions_sum_process: int, t1: int, number_preemptions: int,  stress=0, load_free=1) -> int:
+    def calc_t2(instructions_planned_task: int, t1: int,
+                usable_buffer: int, stress: int,
+                instructions_planned_total: int) -> {}:
         """
-        :param buffer: buffer given by the VRM
-        :param instructions_planned_task: sum of all instructions of a process
-        :param instructions_done_process: sum of all already executed instructions
-        :param instructions_sum_process: sum of all planned task instructions
-        :param t1: current calculated t1
-        :param stress: system level stress factor
-        :param number_preemptions: Amount of preemptions that ocured already
-        :param load_free: Percentage of unallocated time on node
+        :param t1: the value for t1 calculated before
+        :param instructions_planned_task: instructions planned for the currently running task
+        :param usable_buffer: usable buffer for currently running process
+        :param stress: stress on the node
+        :param instructions_planned_total: instructions planned of
+        :return: dictionary with all the t2 components
 
-        Triggers PredictionFailure to VRM. Conditions:
-        1. Individual Task was extremly off => in current implementation this condition holds if one task takes the amount of two slots of the assigned time
-        2. Whole Process is off by significant amount proportional to state of progress
-
-        [TODO] static threshhold depending on stress level
+        todo: enable or disable option for components
         """
-        # --- sanitation ---
+        thresholds = {}
+        # --- t2_task ---
+        t2_task = instructions_planned_task * config.CAP_LATENESS
+        t2_task = t1 + config.T2_SPACER if t2_task < t1 else t2_task
+        thresholds['t2_task'] = t2_task
 
-        if instructions_done_process == 0:
-            instructions_done_process = 1
+        # --- t2_process ---
+        t2_process = usable_buffer + (stress * config.INS_PER_TICK) - config.RESCHEDULE_TIME
+        thresholds['t2_process'] = t2_process
+        # --- t2_node ---
+        if config.T2_NODE_ENABLED:
+            t2_node = (instructions_planned_total * config.MAX_LATENESS_NODE) - instructions_planned_total
+            thresholds['t2_node'] = t2_node
+        else:
+            thresholds['t2_node'] = None
 
-        available_buffer = buffer * load_free * config.ASSIGNABLE_BUFFER
-        usable_buffer = available_buffer * (instructions_sum_process/instructions_done_process)
+        # --- t2_preemptions ---
+        t2_preemptions = config.T2_MAX_PREEMPTIONS
+        thresholds['t2_preemptions'] = t2_preemptions
 
-        t2_buffer_cap = t1 + usable_buffer + (stress * config.INS_PER_TICK) - config.RESCHEDULE_TIME
-        t2_relative = instructions_planned_task * config.CAP_LATENESS
-        t2_spacer = t1 + config.T2_SPACER
-
-        t2_task = max(t2_relative, t2_spacer)
-        t2_task_capped = min(t2_task, t2_buffer_cap)
-
-        # [TODO]: Implement
-        t2_process = t2_task_capped
-
-        t2 = min(t2_process, t2_task_capped)
-
-        assert t1 < t2
-
-        # if a task is interrupted too often, a prediction failure must occur
-        if number_preemptions >= Threshold.max_preemptions:
-            t2 = 0
-        return int(t2)
+        return thresholds
 
     @staticmethod
-    def calc_t_minus(t2):
-        # [TODO]: Implement
-        return int(-1 * t2 * 2)
+    def check_t2(t2: {}, instructions_planned_task: int, run_instructions_task: int,
+                 lateness_process: int, lateness_node: int, preemptions: int) -> bool:
+        if run_instructions_task >= t2['t2_task'] + instructions_planned_task:
+            return True
+        elif lateness_process >= t2['t2_process']:
+            return True
+        elif config.T2_NODE_ENABLED and lateness_node >= t2['t2_node']:
+            return True
+        elif preemptions >= t2['t2_preemptions']:
+            return True
+        else:
+            return False
 
     @staticmethod
-    def calc_usable_buffer(instructions_planned, instructions_left, buffer=config.MAX_BUFF_USAGE, load=config.LOAD):
+    def calc_t2_minus(t2_task: int, t2_node: int) -> {}:
+        """
+        Calculates the threshold values for t-2
+        :param t2_task:
+        :param t2_node:
+        :return:
+        """
+        tm2_task = t2_task * -1
+        tm2_node = t2_node * -1 if t2_node is not None else None
+
+        return {'tm2_task': tm2_task, 'tm2_node': tm2_node}
+
+    @staticmethod
+    def check_tm2(tm2: {}, instructions_run_task: int, lateness_node: int) -> bool:
+        if instructions_run_task <= tm2['tm2_task']:
+            return True
+        elif lateness_node <= tm2['tm2_node']:
+            return True
+        else:
+            return False
+
+
+
+    @staticmethod
+    def calc_usable_buffer(instructions_planned_process, instructions_left, buffer_process: int, free_time=1.0):
         """
         Calculates the proportion of the buffer that is allowed to be used up
+        :param instructions_planned_process: the sum of all instructions planned for the process
+        :param instructions_left: the sum of all instructions that still have to be executed according to the plan
+        :param buffer: the buffer given to the process
+        :param load :
+        :return:
         """
-        instructions_done = instructions_planned - instructions_left
-        process_completion = instructions_done / instructions_planned
+        instructions_done = instructions_planned_process - instructions_left
+        process_completion = instructions_done / instructions_planned_process
+        cleared_buffer = buffer_process * free_time
+        available_buffer = cleared_buffer * config.ASSIGNABLE_BUFFER
+
         if process_completion < 0.05:
             process_completion = 0.05
-        available_buffer = buffer * load #* self.CONSUMEABLE_BUFFER
+
         usable_buffer = available_buffer * process_completion
 
         assert usable_buffer < available_buffer

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 from os import listdir
+from os.path import join
 from typing import List
 import matplotlib.pyplot as plt
-
+import plan
 from config import INS_PER_TICK
 
 """
@@ -11,11 +12,24 @@ Format: [P_ID] [T1] [T2] [T3]
 """
 
 #  ---file names---
-
-LOG_FOLDER = "logs" # Base-Folder for all log-files
-PIC_FOLDER = "pics" # Base-Folder for graphics
+BASE_FOLDER = "/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation"
+LOG_FOLDER = join(BASE_FOLDER, "logs")  # Base-Folder for all log-files
+PIC_FOLDER = join(BASE_FOLDER, "pics")  # Base-Folder for graphics
 THRESH2_ALL = 'thresh2_all.log' # all t2 logs of all processes
 THRESH_CHRON = 'thresh_cron.log' # chronological change of t1, t2, mt2
+PLAN = "plan.log"
+visualize_plan = True
+
+
+def vis():
+    if visualize_plan:
+        vis_plan()
+
+
+def vis_plan():
+    path_plan = join(LOG_FOLDER, PLAN)
+    p = plan.Plan.read_plan_from_file(path_plan)
+    print(p)
 
 
 
@@ -173,4 +187,4 @@ class log_struct:
 
 
 if __name__ == '__main__':
-    run_vis()
+    vis()

@@ -1,5 +1,6 @@
 import unittest
 from task import Task
+from plan import Plan
 import task
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,6 +33,7 @@ class TestTask(unittest.TestCase):
 
     def test_share_slot(self):
         t1, t2, t3 = Task(1, 0, 0), Task(1, 0, 1), Task(1, 0, 2)
+        # p = Plan.generate_custom_plan((t1, t2, t3))
         t1.preempt(t2)
 
         self.assertTrue(len(t1.shares_slot_with) == 1)

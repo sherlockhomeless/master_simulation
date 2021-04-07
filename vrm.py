@@ -1,4 +1,5 @@
 from plan import Plan
+import config
 
 
 class PredictionFailure:
@@ -24,26 +25,27 @@ class VRM:
     def reschedule(self, signal: PredictionFailure) -> Plan:
         return self.reschedule_func(signal)
 
-    def reschedule_simple(self, signal: PredictionFailure) -> Plan:
-        print(f'Rescheduling plan')
+    @staticmethod
+    def reschedule_simple(tasks: ["Task"]) -> Plan:
+        for t in tasks:
+            t.length_plan += t.length_plan * config.PLAN_STRETCH_FACTOR
 
-        for task in self.plan:
-            if signal.process_id == task.process_id:
-                task.length_plan *= signal.transgression
-
-        return self.plan
-
-    def signal_t2(self, time_stamp: int, t: "Task"):
+    def signal_t2(self, time_stamp: int, signaling_task: "Task", tasks: ["Task"]):
         """
         Signals T2
         :param time_stamp: current time at which t2 was signaled
-        :param t: Task which caused signal
+        :param signaling_task: Task which caused signal
+        :param tasks: All upcoming tasks in the plan
         :return:
         """
-        self.received_signals.append((time_stamp, t, "t2"))
-         # [TODO]: Implement calculating new plan
+        self.received_signals.append((time_stamp, signaling_task, "t2"))
+        cur_task_pid = signaling_task.process_id
+        all_tasks_to_stretch = filter(lambda task: task.process_id == cur_task_pid, tasks)
+        VRM.reschedule_simple(all_tasks_to_stretch)
 
-    def signal_t_m2(self,time_stamp, t: "Task"):
+        config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
+
+    def signal_t_m2(self, time_stamp, t: "Task"):
         """
         Signals T-2
         :param time_stamp: current time at which t-2 was signaled
@@ -51,7 +53,7 @@ class VRM:
         :return:
         """
         self.received_signals.append((time_stamp, t, "t_m2"))
-         # [TODO]: Implement calculating new plan
+        raise NotImplementedError
 
     def get_last_signal(self):
         try:
