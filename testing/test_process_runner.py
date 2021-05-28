@@ -92,7 +92,7 @@ class TestProcessRunner(unittest.TestCase):
         self.assertTrue(other_task_of_p.shares_slot_with[0] is t_04)
 
         all_instructions_run = sum([x.instruction_counter.instructions_task for x in (t_00, t_01, t_02, t_03)])
-        self.assertTrue(all_instructions_run == self.pr.time)
+        self.assertTrue(all_instructions_run == self.pr.tick_counter)
 
     def test_multi_stack_preemption(self):
         t0 = Task(100, 0, 0, length_real=500)

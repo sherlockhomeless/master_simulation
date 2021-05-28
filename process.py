@@ -6,7 +6,7 @@ import config
 
 # --- CLASS ---
 class Process:
-    def __init__(self, tasks: List[Task], buffer: int, deadline: int):
+    def __init__(self, tasks: List[Task], buffer: int):
         """
         Representation of a process on a node.
         Params:
@@ -25,12 +25,12 @@ class Process:
         self.log = config.LOG
 
         # config
-        self.buffer = int(buffer)  # unedited, pure number of instructions
-        self.deadline = int(deadline)
+        self.buffer = int(buffer)  # unedited, pure number of instructions that an process has until its deadline
 
         # state tracking
         self.instructions_executed = 0  # count of all instructions already done
         self.instructions_left = sum(tasks)  # instructions that are left according to plan
+        self.instructions_planned = self.instructions_left
         self.process_length = self.instructions_left  # none changing amount of instructions
         self.number_tasks = len(tasks)  # number of all tasks of process
         self.threshold_state = 0  # 0 => no thresholds breaches, -2 => t_m2, 1/2 => t1/t2
@@ -64,4 +64,6 @@ class Process:
                 tasks.append(Task((randint(1,10)*config.INS_PER_TICK), t, pid))
         return Process(tasks)
 
+    def __repr__(self):
+        return f"{{'process_id: {self.process_id}, 'lateness': {self.lateness}}}"
 

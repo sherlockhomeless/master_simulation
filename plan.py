@@ -74,7 +74,7 @@ class Plan:
         processes = []
         # create process instances
         for i in range(num_processes):
-            processes.append(Process(tasks_per_process[i], buffer_list[i], deadline_list[i]))
+            processes.append(Process(tasks_per_process[i], buffer_list[i]))
 
         tasks_for_plan = fix_ids(tasks_for_plan)
 
@@ -201,7 +201,6 @@ class Plan:
             cur_time += context_switch
             cur_time = cur_task.set_times(cur_time)
 
-
     @staticmethod
     def find_last_task_ending(plan: List[Task], num_processes: int) -> List[int]:
         """
@@ -294,7 +293,7 @@ class Plan:
         # List of tasks of all processes
         task_list = []
         # Tuples with (buffer, deadline)
-        process_info = []
+        process_buffer_list = []
         process_list = []
 
         def back_together(lists): return "".join(lists)
@@ -308,8 +307,8 @@ class Plan:
             # process information
             for p in range(num_processes):
                 p_info = process_data[p]
-                buffer = int(p_info.split(',')[2])
-                process_info.append((buffer, None))
+                buffer = int(p_info.split(',')[1])
+                process_buffer_list.append(buffer)
 
             # task information
             task_strings = all.split(';')
@@ -317,17 +316,17 @@ class Plan:
             for t in task_strings:
                 parts = t.split(',')
                 parts = list(map(int, parts))
-                process_id = parts[1]
-                task_id = parts[2]
-                length_plan = parts[3]
-                length_real = parts[4]
+                process_id = parts[0]
+                task_id = parts[1]
+                length_plan = parts[2]
+                length_real = parts[3]
                 new_t = Task(length_plan, process_id, task_id, length_real=length_real)
                 task_list.append(new_t)
 
             tasks_per_p = Plan.sort_plan(task_list)
 
-            for p_info in process_info:
-                process_list.append(Process(tasks_per_p[0], p_info[0], p_info[1]))
+            for p_info in process_buffer_list:
+                process_list.append(Process(tasks_per_p[0], p_info))
                 tasks_per_p = tasks_per_p[1:]
 
             read_plan = Plan(task_list, process_list)
@@ -378,10 +377,10 @@ class Plan:
             f.write(plan_s)
             # now again in human readable ;)
             f.write('\n\n#########\n\n')
-            f.write('pid - pid - tid - len_plan - len-real\n')
+            f.write('pid - tid - len_plan - len-real\n')
             for task in plan.task_list:
                 f.write(
-                    f'{task.process_id} {task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
+                    f'{task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
             f.write('\n')
 
     def __len__(self):
@@ -397,4 +396,3 @@ class Plan:
             return next_t
         except IndexError:
             raise StopIteration
-

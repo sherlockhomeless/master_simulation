@@ -1,4 +1,5 @@
 from plan import Plan
+from task import Task
 import config
 
 
@@ -23,14 +24,16 @@ class VRM:
         self.received_signals = []
 
     def reschedule(self, signal: PredictionFailure) -> Plan:
+
         return self.reschedule_func(signal)
 
     @staticmethod
-    def reschedule_simple(tasks: ["Task"]) -> Plan:
+    def reschedule_simple(tasks: [Task], shrink=False) -> Plan:
+        stetch = config.PLAN_STRETCH_FACTOR if not shrink else -config.PLAN_STRETCH_FACTOR
         for t in tasks:
-            t.length_plan += t.length_plan * config.PLAN_STRETCH_FACTOR
+            t.length_plan += t.length_plan * stetch
 
-    def signal_t2(self, time_stamp: int, signaling_task: "Task", tasks: ["Task"]):
+    def signal_t2(self, time_stamp: int, signaling_task: Task, tasks: [Task]):
         """
         Signals T2
         :param time_stamp: current time at which t2 was signaled
@@ -44,16 +47,21 @@ class VRM:
         VRM.reschedule_simple(all_tasks_to_stretch)
 
         config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
+        print(f'T2 signal received at {time_stamp}')
 
-    def signal_t_m2(self, time_stamp, t: "Task"):
+    def signal_t_m2(self, time_stamp, signaling_task: Task, tasks: [Task]):
         """
         Signals T-2
         :param time_stamp: current time at which t-2 was signaled
-        :param t: Task which caused signal
+        :param signaling_task: Task which caused signal
         :return:
         """
-        self.received_signals.append((time_stamp, t, "t_m2"))
-        raise NotImplementedError
+        self.received_signals.append((time_stamp, signaling_task, "t_m2"))
+        cur_task_pid = signaling_task.process_id
+        all_tasks_to_stretch = filter(lambda task: task.process_id == cur_task_pid, tasks)
+        VRM.reschedule_simple(all_tasks_to_stretch, shrink=True)
+        config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
+        print("tm2 signal received")
 
     def get_last_signal(self):
         try:
