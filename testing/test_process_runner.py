@@ -45,7 +45,7 @@ class TestProcessRunner(unittest.TestCase):
         t_04 = Task(1000, 0, 4, length_real=1000)
 
         config.INS_PER_TICK = 100
-        config.MIN_TICKS_OFF = 1
+        config.T1_MIN_TICKS_OFF = 1
         config.update()
 
         plan = Plan.generate_custom_plan([t_00, t_01, t_02, t_03, t_04])
@@ -101,7 +101,7 @@ class TestProcessRunner(unittest.TestCase):
 
         p = Plan.generate_custom_plan([t0, t1, t2])
         config.INS_PER_TICK = 100
-        config.MIN_TICKS_OFF = 1
+        config.T1_MIN_TICKS_OFF = 1
         config.LOG = False
         config.update()
         pr = ProcessRunner.get_process_runner(p)

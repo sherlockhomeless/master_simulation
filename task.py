@@ -1,4 +1,5 @@
 import numpy as np
+from random import randint
 import config
 from helper import InstructionCounter
 
@@ -16,8 +17,8 @@ class Task:
         self.length_plan: int = length_plan  # decreases
         self.instruction_counter = InstructionCounter()
         if length_real is None:
-            self.length_real = int(np.random.normal(
-                length_plan, length_plan/100 * config.TASK_SIGMA, 1))
+            possible_reals = np.random.normal(length_plan, length_plan/100 * config.TASK_SIGMA, 100)
+            self.length_real = int(possible_reals[randint(0, 99)])
         else:
             self.length_real = int(length_real)
         self.process_id = process_id
@@ -90,7 +91,17 @@ class Task:
         return self.is_late
 
     def get_lateness_task(self) -> int:
-        return int(self.length_plan) if self.length_plan < 0 else 0
+        """
+        Returns Lateness of Task:
+        If the task has finished or task is late: retired_instructions - length_plan
+        else: 0
+        :return:
+        """
+        if self.has_task_finished() or self.is_task_late():
+            return self.instruction_counter.instructions_task - self.length_plan_unchanged
+        else:
+            return 0
+
 
     def get_overdone_instructions(self):
         """

@@ -45,11 +45,11 @@ class TickEvent(dict):
     task_length_plan_unchanged: (str,  int)
     task_length_plan_remaining: (str,  int)
     task_length_real: (str,  int)
-    task_lateness: (str,  int)
+    lateness_task: (str,  int)
     preemptions: (str,  int)
     process_id: (str,  int)
-    process_lateness: (str,  int)
-    node_lateness: (str,  int)
+    lateness_process: (str,  int)
+    lateness_node: (str,  int)
 
     def __getitem__(self, item):
         items = vars(self)

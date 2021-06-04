@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 from typing import List
 
 from process import Process
@@ -12,6 +13,7 @@ import config
 # TODO: Visualisierung durchschnittlicher Threshold
 # TODO: Update Node Lateness
 
+
 def run_sim(saved_plan=None):
     # if simulation should not run saved plan, create new
     if saved_plan is None:
@@ -22,7 +24,7 @@ def run_sim(saved_plan=None):
     runner = ProcessRunner(new_plan)
     Plan.write_plan_to_file(new_plan, config.WRITE_PLAN)
 
-    # here for debugging
+    print(f'Running simulation {new_plan}')
     while not runner.has_finished() and not config.JUST_WRITE_PLAN:
         runner.run_tick()
 
@@ -40,4 +42,7 @@ def create_processes(process_info: [List[Task], int]) -> List[Process]:
 
 
 if __name__ == '__main__':
-    run_sim(saved_plan="logs/plan.log")
+    if len(sys.argv) == 1:
+        run_sim(saved_plan="logs/plan.log")
+    else:
+        run_sim()

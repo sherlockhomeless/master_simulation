@@ -47,7 +47,7 @@ class VRM:
         VRM.reschedule_simple(all_tasks_to_stretch)
 
         config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
-        print(f'T2 signal received at {time_stamp}')
+        print(f'T2 signal received at {time_stamp} by {signaling_task}')
 
     def signal_t_m2(self, time_stamp, signaling_task: Task, tasks: [Task]):
         """

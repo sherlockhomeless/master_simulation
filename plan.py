@@ -301,7 +301,6 @@ class Plan:
         with open(path, 'r') as p:
             all = p.readline()
             num_processes = int(all.split(';')[0])
-            print(f'number processes: {num_processes}')
             process_data = all.split(';;;')[0].split(';')[1:]
             all = back_together(all.split(";;;")[1])
             # process information
@@ -396,3 +395,6 @@ class Plan:
             return next_t
         except IndexError:
             raise StopIteration
+
+    def __repr__(self):
+        return f'(processes: {self.number_all_proceses}, num_tasks: {self.number_all_tasks})'

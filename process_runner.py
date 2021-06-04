@@ -57,6 +57,14 @@ class ProcessRunner:
         Simulates the equivalent of an timer tick. Updates the Threshold and executes the appropriate actions if a threshold is transgressed
         """
 
+        def is_t2_triggered(cur_process, cur_task) -> bool:
+            t2_task_triggered = thresholder.check_t2_task(cur_task.instruction_counter.instructions_task,
+                                                          self.thresholds['t2_task'])
+            t2_process_triggered = thresholder.check_t2_process(cur_process.lateness, self.thresholds['t2_process'])
+            t2_node_triggered = thresholder.check_t2_node(self.lateness_node, self.thresholds['t2_node'])
+            t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
+            return t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
+
         # --- update on task & process level ---
         assert self.cur_task.length_real > 0
 
@@ -73,20 +81,7 @@ class ProcessRunner:
 
         # --- Task has finished ---
         if cur_task.has_task_finished():
-            print(f'task {cur_task_id} has finished')
-            instructions_left_in_tick = cur_task.get_overdone_instructions()
-            if len(cur_process.tasks) == 0:
-                self.mark_process_finished()
-
-            if cur_task.has_task_finished_early():
-                tm2_task_triggered = thresholder.check_tm2_task(cur_task.instruction_counter.instructions_task, self.thresholds['tm2_task'])
-                tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'])
-                if tm2_task_triggered or tm2_node_triggered:
-                    self.vrm.signal_t_m2(self.tick_counter, cur_task, self.task_list)
-
-            self.update_process_node_lateness()
-            self.pick_next_task()
-            cur_task.run(instructions_left_in_tick)
+            self.handle_task_finish(cur_process, cur_task, cur_task_id)
 
         # --- Task has NOT finished ---
         elif cur_task.is_task_late():
@@ -96,13 +91,9 @@ class ProcessRunner:
             if instructions_run_slot >= self.thresholds['t1']:
                 self.preempt_current_process()
 
-            t2_task_triggered = thresholder.check_t2_task(cur_task.instruction_counter.instructions_task, self.thresholds['t2_task'])
-            t2_process_triggered = thresholder.check_t2_process(cur_process.lateness, self.thresholds['t2_process'])
-            t2_node_triggered = thresholder.check_t2_node(self.lateness_node, self.thresholds['t2_node'])
-            t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
-
-            if t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered:
+            if is_t2_triggered(cur_process, cur_task):
                 self.signal_t2()
+
         self.tick_counter += 1
 
         if config.LOG and self.cur_task.task_id != -1:
@@ -112,10 +103,27 @@ class ProcessRunner:
             if config.LOG_TERM:
                 print(f'time: {self.tick_counter}, task: {self.cur_task}')
 
+    def handle_task_finish(self, cur_process, cur_task, cur_task_id):
+        print(f'task {cur_task_id} has finished')
+        instructions_left_in_tick = cur_task.get_overdone_instructions()
+        if len(cur_process.tasks) == 0:
+            self.mark_process_finished()
+        if cur_task.has_task_finished_early():
+            tm2_task_triggered = thresholder.check_tm2_task(cur_task.instruction_counter.instructions_task,
+                                                            self.thresholds['tm2_task'])
+            tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'])
+            if tm2_task_triggered or tm2_node_triggered:
+                self.vrm.signal_t_m2(self.tick_counter, cur_task, self.task_list)
+        self.update_process_node_lateness()
+        self.pick_next_task()
+        cur_task.run(instructions_left_in_tick)
+
     def update_process_node_lateness(self):
-        self.lateness_node = sum([p.lateness for p in self.processes])
-        self.cur_process.lateness = sum([t.get_lateness_task() for t in filter
-        (lambda task: task.process_id == self.cur_process.process_id, self.task_list)])
+        lateness_node = sum([p.lateness for p in self.processes])
+        lateness_process = sum([t.get_lateness_task() for t in filter
+        (lambda task: task.process_id == self.cur_process.process_id, self.finished_tasks)])
+        self.lateness_node = lateness_node
+        self.cur_process.lateness = lateness_process
 
     def transgresses_t1(self) -> bool:
         """
@@ -238,6 +246,8 @@ class ProcessRunner:
         It calculates all the thresholds relevant for the upcoming timer tick.
         :return:
         """
+        if self.tick_counter == 15006:
+            print("del")
         cur_task = self.cur_task
 
         cur_process_id = cur_task.process_id
@@ -279,9 +289,6 @@ class ProcessRunner:
         assert self.thresholds['t1'] > self.cur_task.length_plan_unchanged
         assert self.thresholds['t1'] < self.thresholds['t2_task']
 
-        if config.LOG:
-            pass
-#            self.write_thresh_log()
 
     def has_finished(self) -> bool:
         return False if len(self.task_list) > 0 else True
@@ -345,7 +352,7 @@ class ProcessRunner:
         lateness_task = self.cur_task.get_lateness_task()
         preemptions = self.cur_task.was_preempted
         cur_process_id = self.cur_process.process_id
-        lateness_process = self.cur_process.process_length
+        lateness_process = self.cur_process.lateness
         lateness = self.lateness_node
 
         line_thresholds = f'tick:{tick};t1_sum:{t1_sum};t1_pure:{t1_pure};t2_task_sum:{t2_task_sum};' \
@@ -354,7 +361,7 @@ class ProcessRunner:
         line_task = f'cur_task_id:{cur_task_id};cur_task_len_unchanged:{cur_task_len_unchanged};' \
                     f'cur_task_len_plan:{cur_task_len_plan};cur_task_len_real:{cur_task_len_real};' \
                     f'lateness_task:{lateness_task};preemptions:{preemptions};'
-        line_rest = f'cur_process_id:{cur_process_id};lateness_process:{lateness_process};lateness:{lateness}'
+        line_rest = f'cur_process_id:{cur_process_id};lateness_process:{lateness_process};lateness_node:{lateness}'
         log_string = line_thresholds + line_task + line_rest + '\n'
         self.log_unified.write(log_string)
 

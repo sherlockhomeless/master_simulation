@@ -1,7 +1,6 @@
 from process import Process
 from task import Task
 import config
-import math
 
 
 def calc_t1(instructions_planned: int) -> int:
@@ -35,7 +34,7 @@ def calc_t2_task(ins_planned: int, t1: int) -> int:
 
 
 def check_t2_task(instructions_retired_task: int, t2_task: int) -> bool:
-    return instructions_retired_task < t2_task
+    return instructions_retired_task > t2_task
 
 
 def calc_t2_process(cur_process: Process, stress: int) -> int:
@@ -67,7 +66,7 @@ def calc_t2_process(cur_process: Process, stress: int) -> int:
 
 
 def check_t2_process(lateness_process: int, t2_process) -> bool:
-    return lateness_process < t2_process
+    return lateness_process > t2_process
 
 
 def calc_t2_node(instructions_planned_total: int) -> int:
@@ -78,7 +77,7 @@ def calc_t2_node(instructions_planned_total: int) -> int:
 
 
 def check_t2_node(node_lateness: int, t2_node: int) -> bool:
-    return node_lateness < t2_node
+    return node_lateness > t2_node
 
 
 def check_t2_preemptions(task: Task) -> bool:
