@@ -38,7 +38,10 @@ def vis():
     visualize_ticks(logs, ['t1', 't1_pure'], "t1_tick")
 
     print('visualize t2 per tick')
-    visualize_ticks(logs, ['t2_task', 't2_task_pure', 't2_process', 't2_node'], 't2_tick')
+    visualize_ticks(logs, ['t2_task', 't2_task_pure', 't2_process_capacity', 't2_process_plan',  't2_node'], 't2_tick')
+
+    print('visualize t2 per tick without node')
+    visualize_ticks(logs, ['t2_task', 't2_task_pure', 't2_process_capacity', 't2_process_plan'], 't2_tick_wo_node')
 
     print('visualizing latenesses')
     visualize_ticks(logs, ['lateness_task', 'lateness_process', 'lateness_node'], 'latenesses')

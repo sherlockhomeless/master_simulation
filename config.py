@@ -13,8 +13,8 @@ task_sigma: float = 0.1  # sigma for normal distribution for calculating real le
 
 # --- ProcessRunner Basic Config ---
 COST_CONTEXT_SWITCH: int = 0
-IPS: int = 1000  # was 4000000000
-HZ: int = 10  # should be 250
+IPS: int = 1000000000  # was 4000000000
+HZ: int = 100  # should be 250
 INS_PER_TICK: int = int(IPS/HZ)
 RESCHEDULE_TIME: int = IPS * 10
 
@@ -30,8 +30,8 @@ FREE_TIME: float = 0.1  # Percentage of the plan that is not assigned
 NUMBER_PROCESSES: int = 3
 TASK_MIN_LEN: int = INS_PER_TICK
 TASK_MAX_LEN: int = INS_PER_TICK * 100
-PROCESS_MIN_LEN: int = 90  # Minimum amount of tasks in process
-PROCESS_MAX_LEN: int = 100  # Maximum amount of tasks in process
+PROCESS_MIN_LEN: int = 100  # Minimum amount of tasks in process
+PROCESS_MAX_LEN: int = 200  # Maximum amount of tasks in process
 BUFFER_MIN: float = 2  # Minimal buffer size in Integer => 2 = 2%
 BUFFER_MAX: float = 10  # Maximal buffer size in Integer => 10 = 10%
 
@@ -44,15 +44,37 @@ NO_PREEMPTION: int = T1_MIN_TICKS_OFF * INS_PER_TICK  # Task does not get interr
 T1_SIGMA: float = 1.1
 
 # t2
-RELAX: int = 1
-STRESS_PER_SIGNAL: int = 30 * HZ  # seconds until
-ASSIGNABLE_BUFFER: float = 1
-T2_MAX_TASK_LATENESS: float = 1.3
-T2_SPACER: float = (T1_MAX_TICKS_OFF * INS_PER_TICK) + (T1_MAX_TICKS_OFF * 0.5)
-T2_MAX_PREEMPTIONS: float = 5  # Max number a task is allowed to be preempted before Prediction Signal Failure
-T2_NODE_LATENESS: float = 1.1
+# t2_task
+T2_SIGMA: float = 1.3
+T2_SPACER: int = int((T1_MAX_TICKS_OFF * INS_PER_TICK) + (T1_MAX_TICKS_OFF * 0.5))
+T2_TASK_SIGNALING_LIMIT: int = (T1_MAX_TICKS_OFF * 5) * INS_PER_TICK
+
+# t2_process
+T2_STRESS_RESET: int = 30 * HZ  # seconds until
+T2_STRESS_GAIN: int = int(0.25 * INS_PER_TICK)
+T2_AVAILABLE_PLAN_BUFFER = 0.7
+T2_CAPACITY_BUFFER = 1.1
+ASSIGNABLE_BUFFER: float = 0.7
 T2_MINIMUM_USABLE_BUFFER: float = 0.05  # Minimum of the available buffer that is usable
 T2_PROCESS_MINIMUM = int(RESCHEDULE_TIME * 1.5)
+
+# t2_node
+T2_NODE_LATENESS: float = 1.1
+T2_NODE_LOWER_BOUND = T2_PROCESS_MINIMUM * NUMBER_PROCESSES
+
+# t2_preemptions
+T2_MAX_PREEMPTIONS: float = 5  # Max number a task is allowed to be preempted before Prediction Signal Failure
+
+# tm2
+# tm2_task
+TM2_SIGMA: float = 1 - (T2_SIGMA - 1)
+TM2_TASK_SIGNALING_START: int = T2_SPACER * -1
+TM2_TASK_SIGNALING_LIMIT: int = T2_TASK_SIGNALING_LIMIT * -1
+
+# tm2_node
+TM2_NODE_EARLINESS_CAP: float = 1 - (T2_NODE_LATENESS - 1)
+TM2_NODE_EARLINESS_EXTRA: float = 1.05
+TM2_NODE_LOWER_BOUND: int = int((T2_NODE_LOWER_BOUND * TM2_NODE_EARLINESS_EXTRA) * -1)
 
 # Rescheduling
 PLAN_STRETCH_FACTOR: float = 0.05  # factor to adjust all tasks or processes after a prediction failure signal
@@ -81,6 +103,7 @@ else:
     logging.basicConfig(filename="/dev/null", level=logging.CRITICAL)
 logger = logging.getLogger('all')
 
+
 def update():
     """
     Updates Config Variables that are based on other values for testing
@@ -100,4 +123,23 @@ def update():
     T1_MAX_VALUE = T1_MAX_TICKS_OFF * INS_PER_TICK  # Task gets interrupted above this limit
     NO_PREEMPTION = T1_MIN_TICKS_OFF * INS_PER_TICK  # Task does not get interrupted below this limit
     T2_SPACER = T1_MAX_TICKS_OFF * INS_PER_TICK
+
+
+def set_test_config():
+    """
+    This function sets fixed values for the configuration variables to enable consistent behaviour for the unit tests
+    :return:
+    """
+    global IPS
+    global HZ
+    global RESCHEDULE_TIME
+    global T1_MAX_TICKS_OFF
+    global T1_MIN_TICKS_OFF
+
+    HZ = 100
+    IPS = 10000
+    RESCHEDULE_TIME = IPS * 10
+    T1_MAX_TICKS_OFF = 20
+    T1_MIN_TICKS_OFF = 2
+    update()
 

@@ -130,14 +130,28 @@ class TestProcessRunner(unittest.TestCase):
         """
         Sets Task up to finish to early and checks if a signal was sent to VRM
         """
-        config.INS_PER_TICK = 100
+        config.set_test_config()
         t0 = Task(10000, 0, 0, length_real=100)
         t1 = Task(100, 0, 1, length_real=500)
-        p = Plan.generate_custom_plan((t0, t1))
+        p = Plan.generate_custom_plan([t0, t1])
         pr = ProcessRunner.get_process_runner(p)
 
         pr.run_tick()
         self.assertTrue(pr.vrm.get_last_signal()[1] is t0)
+
+    def test_assign_new(self):
+        """
+        Intended scenario: Task is late, unallocated slot is reassigned
+        :return:
+        """
+        t0 = Task(1000, 0, 0, length_real=1500)
+        t1 = Task(5000, -1, -1)
+        p = Plan.generate_custom_plan([t0, t1])
+        pr = ProcessRunner.get_process_runner(p)
+
+        pr.run()
+        self.assertEqual(len(pr.finished_tasks), 1)
+        self.assertTrue(pr.finished_tasks[0].finished_late)
 
     def test_receive_new_plan(self):
         pass

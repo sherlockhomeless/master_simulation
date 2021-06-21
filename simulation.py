@@ -27,7 +27,7 @@ def run_sim(saved_plan=None):
     print(f'Running simulation {new_plan}')
     while not runner.has_finished() and not config.JUST_WRITE_PLAN:
         runner.run_tick()
-
+    assert len(runner.finished_tasks) > 0
 
 def create_processes(process_info: [List[Task], int]) -> List[Process]:
     """

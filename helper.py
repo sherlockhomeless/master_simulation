@@ -1,17 +1,19 @@
-class InstructionCounter:
-    def __init__(self):
-        self.instructions_task = 0
-        self.instructions_slot = 0
+import process
+import task
+from typing import Optional, List
 
-    def run_instructions(self, ins: int):
-        self.instructions_task += ins
-        self.instructions_slot += ins
 
-    def run_instructions_slot(self, ins: int):
-        self.instructions_slot += ins
+def get_next_task_for_process(task_list: List[task.Task], p: process.Process) -> Optional[task.Task]:
+    for t in task_list:
+        if t.task_id == p.process_id:
+            return t
+    return None
 
-    def run_instructions_task(self, ins: int):
-        self.instructions_task += ins
 
-    def __repr__(self):
-        return f'( t: {self.instructions_task}, s: {self.instructions_slot})'
+def get_process_with_pid(pid: int, process_list: List[process.Process]) -> process.Process:
+    return list(filter(lambda p: pid == p.process_id, process_list))[0]
+
+
+class PlanFinishedException(Exception):
+    pass
+

@@ -1,7 +1,8 @@
-import numpy as np
 from random import randint
+import numpy as np
+
+from instruction_counter import InstructionCounter
 import config
-from helper import InstructionCounter
 
 
 class Task:
@@ -10,7 +11,7 @@ class Task:
     The real length is determined by a random variable
     """
 
-    def __init__(self, length_plan, process_id, task_id, length_real=None, start=0, end=0):
+    def __init__(self, length_plan: int, process_id: int, task_id: int, length_real=None, start=0, end=0):
         assert type(length_plan) is int
 
         self.length_plan_unchanged = length_plan
@@ -53,26 +54,21 @@ class Task:
         self.length_real -= ins
         self.length_plan -= ins
         self.instruction_counter.run_instructions_task(ins)
-        try:
-            assert type(self.length_plan) is int
-        except AssertionError:
-            #todo: fix, why is length_plan sometimes not an int
-            pass
 
-        # --- state check ---
+        assert type(self.length_plan) is int
+
+        # --- state checks ---
         if self.length_real <= 0:
             self.task_finished = True
-            if self.length_plan > 0:
+            if self.length_plan > 0 and self.was_preempted == 0:
                 self.finished_early = True
-            elif self.length_plan < 0:
+            elif self.length_plan < 0 or self.was_preempted > 0:
                 self.finished_late = True
             else:
                 self.finished_on_time = True
         else:
             self.is_running = True
-            if self.length_plan > 0:
-                return
-            else:
+            if self.length_plan <= 0:
                 self.is_late = True
 
         # assign run instructions to slot
@@ -101,7 +97,6 @@ class Task:
             return self.instruction_counter.instructions_task - self.length_plan_unchanged
         else:
             return 0
-
 
     def get_overdone_instructions(self):
         """
@@ -178,3 +173,7 @@ class Task:
 
     def __radd__(self, other):
         return other + self.length_plan
+
+    @staticmethod
+    def get_placeholder_task() -> "Task":
+        return Task(-1, -1, -1)

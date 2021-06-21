@@ -1,5 +1,6 @@
-from threshold_func import *
+from threshold_impl import *
 from typing import Callable
+
 
 class Threshold:
     def __init__(self, compute_t1: Callable = None, check_t1: Callable = None, compute_t2_task: Callable = None,

@@ -347,11 +347,10 @@ class Plan:
             tasks_per_p[t.process_id].append(t)
 
         buffers = Plan.generate_buffer_list(tasks_per_p, (config.BUFFER_MIN, config.BUFFER_MAX))
-        deads = Plan.generate_deadlines(tasks, buffers)
 
         ps = []
-        for i in range(len(deads)):
-            ps.append(Process(tasks_per_p[i], buffers[i], deads[i]))
+        for i in range(len(buffers)):
+            ps.append(Process(tasks_per_p[i], buffers[i]))
 
         return Plan(tasks, ps)
 

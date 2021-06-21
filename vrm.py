@@ -20,18 +20,19 @@ class VRM:
 
     def __init__(self, plan: Plan):
         self.plan = plan
-        self.reschedule_func = self.reschedule_simple # set for different rescheduling mechanisms
+        self.reschedule_func = self.reschedule_simple  # set for different rescheduling mechanisms
         self.received_signals = []
 
-    def reschedule(self, signal: PredictionFailure) -> Plan:
+    def reschedule(self, signal: PredictionFailure) -> [Task]:
 
         return self.reschedule_func(signal)
 
     @staticmethod
-    def reschedule_simple(tasks: [Task], shrink=False) -> Plan:
+    def reschedule_simple(tasks: [Task], shrink=False) -> [Task]:
         stetch = config.PLAN_STRETCH_FACTOR if not shrink else -config.PLAN_STRETCH_FACTOR
         for t in tasks:
             t.length_plan += t.length_plan * stetch
+        return tasks
 
     def signal_t2(self, time_stamp: int, signaling_task: Task, tasks: [Task]):
         """
@@ -43,13 +44,13 @@ class VRM:
         """
         self.received_signals.append((time_stamp, signaling_task, "t2"))
         cur_task_pid = signaling_task.process_id
-        all_tasks_to_stretch = filter(lambda task: task.process_id == cur_task_pid, tasks)
+        all_tasks_to_stretch = list(filter(lambda task: task.process_id == cur_task_pid, tasks))
         VRM.reschedule_simple(all_tasks_to_stretch)
 
         config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
         print(f'T2 signal received at {time_stamp} by {signaling_task}')
 
-    def signal_t_m2(self, time_stamp, signaling_task: Task, tasks: [Task]):
+    def signal_t_m2(self, time_stamp, signaling_task: Task, tasks: [Task]) -> [Task]:
         """
         Signals T-2
         :param time_stamp: current time at which t-2 was signaled
@@ -58,10 +59,11 @@ class VRM:
         """
         self.received_signals.append((time_stamp, signaling_task, "t_m2"))
         cur_task_pid = signaling_task.process_id
-        all_tasks_to_stretch = filter(lambda task: task.process_id == cur_task_pid, tasks)
-        VRM.reschedule_simple(all_tasks_to_stretch, shrink=True)
+        all_tasks_to_stretch = list(filter(lambda task: task.process_id == cur_task_pid, tasks))
+        tasks_streched = VRM.reschedule_simple(all_tasks_to_stretch, shrink=True)
         config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
         print("tm2 signal received")
+        return tasks_streched
 
     def get_last_signal(self):
         try:
