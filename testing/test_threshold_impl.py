@@ -1,5 +1,4 @@
 import unittest
-import threshold_impl
 from plan import Plan
 from process_runner import ProcessRunner
 

@@ -60,7 +60,7 @@ T2_PROCESS_MINIMUM = int(RESCHEDULE_TIME * 1.5)
 
 # t2_node
 T2_NODE_LATENESS: float = 1.1
-T2_NODE_LOWER_BOUND = T2_PROCESS_MINIMUM * NUMBER_PROCESSES
+T2_NODE_LOWER_BOUND: float = T2_PROCESS_MINIMUM * NUMBER_PROCESSES
 
 # t2_preemptions
 T2_MAX_PREEMPTIONS: float = 5  # Max number a task is allowed to be preempted before Prediction Signal Failure

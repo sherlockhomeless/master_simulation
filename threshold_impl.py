@@ -19,11 +19,10 @@ def calc_t1(instructions_planned: int) -> int:
     """
 
     t1_relative_deviation = instructions_planned * config.T1_SIGMA
-    t1_preemption_minimum = instructions_planned + config.NO_PREEMPTION
-    relative_t1 = max(t1_relative_deviation, t1_preemption_minimum)
+    relative_t1 = max(t1_relative_deviation, config.NO_PREEMPTION)
 
-    t1 = int(min(relative_t1, config.T1_MAX_VALUE + instructions_planned))
-    assert t1 > config.NO_PREEMPTION
+    t1 = int(min(relative_t1, config.T1_MAX_VALUE))
+    t1 += instructions_planned
 
     return t1
 

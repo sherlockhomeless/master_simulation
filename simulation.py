@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import sys
-from typing import List
 
-from process import Process
+import sys
+
 from plan import Plan
-from task import Task
 from process_runner import ProcessRunner
 import config
 
@@ -25,24 +23,16 @@ def run_sim(saved_plan=None):
     Plan.write_plan_to_file(new_plan, config.WRITE_PLAN)
 
     print(f'Running simulation {new_plan}')
-    while not runner.has_finished() and not config.JUST_WRITE_PLAN:
-        runner.run_tick()
-    assert len(runner.finished_tasks) > 0
+    if not config.JUST_WRITE_PLAN:
+        runner.run()
 
-def create_processes(process_info: [List[Task], int]) -> List[Process]:
-    """
-    Creates processes according to the configuration given above.
-    Process-Info is list of tuples [(<task-list>,buffer),...]
-    """
-    processes = []
-    for p in process_info:
-        # tasklist, buffer, deadline
-        processes.append(Process(p[0], p[1]))
-    return processes
+    for finished_task in runner.finished_tasks:
+        assert finished_task.has_task_finished() is True
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        run_sim(saved_plan="logs/plan.log")
+    if len(sys.argv) == 2:
+        print(f'running simulation with plan {sys.argv[1]}')
+        run_sim(saved_plan=sys.argv[1])
     else:
         run_sim()

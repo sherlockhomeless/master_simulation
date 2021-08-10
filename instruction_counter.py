@@ -1,6 +1,6 @@
 
 
-class InstructionCounter:
+class InstructionTracker:
     def __init__(self):
         self.instructions_task = 0
         self.instructions_slot = 0

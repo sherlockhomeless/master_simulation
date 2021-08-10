@@ -44,10 +44,44 @@ def vis():
     visualize_ticks(logs, ['t2_task', 't2_task_pure', 't2_process_capacity', 't2_process_plan'], 't2_tick_wo_node')
 
     print('visualizing latenesses')
-    visualize_ticks(logs, ['lateness_task', 'lateness_process', 'lateness_node'], 'latenesses')
+    visualize_ticks(logs, ['lateness_task'], 'latenesses_task')
+    visualize_ticks(logs, ['lateness_process'], 'latenesses_process')
+    visualize_ticks(logs, ['lateness_node'], 'latenesses_node')
+
+    print('visualize per process lateness')
+    for i in range(2):
+        cur_logs = list(filter(lambda l: l.process_id[1] == i, logs))
+        visualize_ticks(cur_logs, ['lateness_process', 't2_process_plan'], f'lateness_p{i}')
 
     print('printing plan and real lengths')
     visualize_plan_real_deviation(plan.Plan.read_plan_from_file(PLAN_LOG), 'compare_plan_real')
+
+    print('printing t1_task & t2_task for one process')
+    visualize_t1_t2_per_process(logs, 0)
+
+
+def visualize_t1_t2_per_process(logs: List[TickEvent], pid: int):
+    """
+    Filters the logs for only one process and then only the start tick for a task
+    """
+    only_one_pid = list(filter(lambda l: l.process_id[1] == pid, logs))
+    filtered_logs = []
+    seen_tids = set()
+    for l in only_one_pid:
+        if l.task_id[1] not in seen_tids:
+            filtered_logs.append(l)
+            seen_tids.add(l.task_id[1])
+
+    x_axis = range(len(filtered_logs))
+    plt.plot(x_axis, [y.t1[1]/config.INS_PER_TICK for y in filtered_logs], label='t1')
+    plt.plot(x_axis, [y.t1_pure[1]/config.INS_PER_TICK for y in filtered_logs], label='t1 pure')
+    plt.plot(x_axis, [y.t2_task[1]/config.INS_PER_TICK for y in filtered_logs], label='t2 task')
+    plt.plot(x_axis, [y.t2_task_pure[1]/config.INS_PER_TICK for y in filtered_logs], label='t2 task pure')
+
+    plt.xlabel('time ticks')
+    plt.ylabel('instructions per tick')
+    plt.legend()
+    save_fig('t1_t2_process')
 
 
 def visualize_ticks(logs: List[TickEvent], tracking_values: List[str], figure_name="", scale_to_IPT=True):

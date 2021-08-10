@@ -31,7 +31,7 @@ class VRM:
     def reschedule_simple(tasks: [Task], shrink=False) -> [Task]:
         stetch = config.PLAN_STRETCH_FACTOR if not shrink else -config.PLAN_STRETCH_FACTOR
         for t in tasks:
-            t.length_plan += t.length_plan * stetch
+            t.length_plan += int(t.length_plan * stetch)
         return tasks
 
     def signal_t2(self, time_stamp: int, signaling_task: Task, tasks: [Task]):
@@ -57,13 +57,14 @@ class VRM:
         :param signaling_task: Task which caused signal
         :return:
         """
+        length_original = signaling_task.length_plan
         self.received_signals.append((time_stamp, signaling_task, "t_m2"))
         cur_task_pid = signaling_task.process_id
         all_tasks_to_stretch = list(filter(lambda task: task.process_id == cur_task_pid, tasks))
-        tasks_streched = VRM.reschedule_simple(all_tasks_to_stretch, shrink=True)
+        VRM.reschedule_simple(all_tasks_to_stretch, shrink=True)
         config.logger.info(f'@{time_stamp}{signaling_task} caused a prediction failure signal')
-        print("tm2 signal received")
-        return tasks_streched
+        assert length_original != tasks[0].length_plan
+        return tasks
 
     def get_last_signal(self):
         try:

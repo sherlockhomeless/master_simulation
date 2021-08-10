@@ -4,7 +4,7 @@ import helper
 from task import Task
 from process import Process
 from threshold_interface import thresholder
-from vrm import VRM
+from job_scheduler import VRM
 from plan import Plan
 from helper import PlanFinishedException
 import config
@@ -54,6 +54,15 @@ class ProcessRunner:
             self.t2_pure = 0
             self.tm2_pure = 0
 
+
+    def run(self):
+        while not self.has_finished():
+            self.run_tick()
+
+            if config.LOG and self.cur_task.task_id != -1:
+                self.write_unified_log()
+                if config.LOG_TERM:
+                    print(f'time: {self.tick_counter}, task: {self.cur_task}')
     def run_tick(self):
         """
         Simulates the equivalent of an timer tick. Updates the Threshold and executes the appropriate actions
@@ -87,6 +96,7 @@ class ProcessRunner:
                 self.handle_task_finish(cur_process, cur_task, cur_task_id)
             except helper.PlanFinishedException:
                 assert len(self.task_list) == 0
+                return
 
         # --- Task has NOT finished ---
         elif cur_task.is_task_late():
@@ -102,8 +112,6 @@ class ProcessRunner:
         self.tick_counter += 1
 
     def handle_task_finish(self, cur_process, cur_task, cur_task_id):
-
-        print(f'task {cur_task_id} has finished')
         instructions_left_in_tick = cur_task.get_overdone_instructions()
         if len(cur_process.tasks) == 0:
             self.mark_process_finished()
@@ -115,7 +123,9 @@ class ProcessRunner:
                 self.task_list = self.vrm.signal_t_m2(self.tick_counter, cur_task, self.task_list)
         self.update_process_node_lateness()
         self.pick_next_task()
-        cur_task.run(instructions_left_in_tick)
+        #if config.LOG_TERM:
+        print(f'finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
+        self.cur_task.run(instructions_left_in_tick)
 
     def preempt_current_process(self):
         """
@@ -198,14 +208,6 @@ class ProcessRunner:
         preempted_task.was_preempted += 1
         assert len(self.task_list) == len_plan_start
 
-    def signal_t2(self):
-        """
-        Should signal to the VRM that there is an significant failure with the prediction of the prediction model.
-        In this simulation this step is kept very simple
-        """
-        self.stress = config.T2_STRESS_RESET
-        self.vrm.signal_t2(self.tick_counter, self.cur_task, self.task_list)
-
     def pick_next_task(self):
         import helper
         """
@@ -263,15 +265,6 @@ class ProcessRunner:
             handle_unallocated_slot()
         self.cur_process = self.processes[self.cur_task.process_id]
 
-    def run(self):
-        while not self.has_finished():
-            self.run_tick()
-
-            if config.LOG and self.cur_task.task_id != -1:
-                self.write_unified_log()
-                if config.LOG_TERM:
-                    print(f'time: {self.tick_counter}, task: {self.cur_task}')
-
     def update_thresholds(self):
         """
         It calculates all the thresholds relevant for the upcoming timer tick.
@@ -293,8 +286,9 @@ class ProcessRunner:
 
         instructions_planned_task = self.cur_task.length_plan_unchanged
         # --- calculate t1 ---
-        self.thresholds['t1'] = thresholder.compute_t1(instructions_planned)
-        self.thresholds['t1_pure'] = self.thresholds['t1'] - instructions_planned_task
+        t1 = thresholder.compute_t1(instructions_planned)
+        self.thresholds['t1'] = t1
+        self.thresholds['t1_pure'] = t1 - instructions_planned_task
 
         # --- calculate t2 ---
         t2_task = thresholder.compute_t2_task(instructions_planned_task, self.thresholds['t1'])
@@ -317,7 +311,10 @@ class ProcessRunner:
         tm2_node = thresholder.compute_tm2_node(self.thresholds['t2_node'])
         self.thresholds['tm2_node'] = tm2_node
 
-        assert self.thresholds['t1'] > self.cur_task.length_plan_unchanged
+        try:
+            assert self.thresholds['t1'] > self.cur_task.length_plan_unchanged
+        except AssertionError:
+            print("cool")
         assert self.thresholds['t1'] < self.thresholds['t2_task']
 
     def has_finished(self) -> bool:
@@ -370,6 +367,14 @@ class ProcessRunner:
         cur_lateness = self.cur_task.length_plan
         return True if t1 > cur_lateness else False
 
+    def signal_t2(self):
+        """
+        Should signal to the VRM that there is an significant failure with the prediction of the prediction model.
+        In this simulation this step is kept very simple
+        """
+        self.stress = config.T2_STRESS_RESET
+        self.vrm.signal_t2(self.tick_counter, self.cur_task, self.task_list)
+
     def write_unified_log(self) -> None:
         """
         Format: Tick;t1_sum;t1_pure;t2_task_sum;t2_task_pure;t2_process;t2_node;tm2_task_sum;tm2_task_pure;tm2_node;
@@ -409,7 +414,7 @@ class ProcessRunner:
         line_task = f'cur_task_id:{cur_task_id};cur_task_len_unchanged:{cur_task_len_unchanged};' \
                     f'cur_task_len_plan:{cur_task_len_plan};cur_task_len_real:{cur_task_len_real};' \
                     f'lateness_task:{lateness_task};preemptions:{preemptions};'
-        line_rest = f'cur_process_id:{cur_process_id};lateness_process:{lateness_process};lateness_node:{lateness}'
+        line_rest = f'process_id:{cur_process_id};lateness_process:{lateness_process};lateness_node:{lateness}'
         log_string = line_thresholds + line_task + line_rest + '\n'
         self.log_unified.write(log_string)
 

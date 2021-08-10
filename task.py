@@ -1,7 +1,7 @@
 from random import randint
 import numpy as np
 
-from instruction_counter import InstructionCounter
+from instruction_counter import InstructionTracker
 import config
 
 
@@ -14,9 +14,10 @@ class Task:
     def __init__(self, length_plan: int, process_id: int, task_id: int, length_real=None, start=0, end=0):
         assert type(length_plan) is int
 
+        assert type(length_plan) is int
         self.length_plan_unchanged = length_plan
         self.length_plan: int = length_plan  # decreases
-        self.instruction_counter = InstructionCounter()
+        self.instruction_counter = InstructionTracker()
         if length_real is None:
             possible_reals = np.random.normal(length_plan, length_plan/100 * config.TASK_SIGMA, 100)
             self.length_real = int(possible_reals[randint(0, 99)])
@@ -50,12 +51,14 @@ class Task:
         n is the amount of instructions that are left in the current tick
         TODO: In real implementation => here only tick granularity is possible
         """
+        assert type(ins) is int
         # --- instructions counting ---
         self.length_real -= ins
         self.length_plan -= ins
         self.instruction_counter.run_instructions_task(ins)
 
         assert type(self.length_plan) is int
+
 
         # --- state checks ---
         if self.length_real <= 0:
