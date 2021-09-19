@@ -16,7 +16,7 @@ COST_CONTEXT_SWITCH: int = 0
 IPS: int = 1000000000  # was 4000000000
 HZ: int = 100  # should be 250
 INS_PER_TICK: int = int(IPS/HZ)
-RESCHEDULE_TIME: int = IPS * 10
+RESCHEDULE_TIME: int = IPS * 1
 
 # --- Process Runner Behaviour Config ---
 # Discussed in Thesis; Determines if unallocated time slots are allowed to be assigned to preempted tasks
@@ -29,15 +29,15 @@ DEADLINE: float = 1.1  # total time * DEADLINE = Time to be finished
 FREE_TIME: float = 0.1  # Percentage of the plan that is not assigned
 NUMBER_PROCESSES: int = 3
 TASK_MIN_LEN: int = INS_PER_TICK
-TASK_MAX_LEN: int = INS_PER_TICK * 100
-PROCESS_MIN_LEN: int = 100  # Minimum amount of tasks in process
+TASK_MAX_LEN: int = INS_PER_TICK * 50
+PROCESS_MIN_LEN: int = 150  # Minimum amount of tasks in process
 PROCESS_MAX_LEN: int = 200  # Maximum amount of tasks in process
 BUFFER_MIN: float = 2  # Minimal buffer size in Integer => 2 = 2%
 BUFFER_MAX: float = 10  # Maximal buffer size in Integer => 10 = 10%
 
 # Threshold-Config
 # t1
-T1_MAX_TICKS_OFF: int = 20
+T1_MAX_TICKS_OFF: int = 10
 T1_MIN_TICKS_OFF: int = 2
 T1_MAX_VALUE: int = T1_MAX_TICKS_OFF * INS_PER_TICK  # Task gets interrupted above this limit
 NO_PREEMPTION: int = T1_MIN_TICKS_OFF * INS_PER_TICK  # Task does not get interrupted below this limit
@@ -46,8 +46,10 @@ T1_SIGMA: float = 1.1
 # t2
 # t2_task
 T2_SIGMA: float = 1.3
-T2_SPACER: int = int((T1_MAX_TICKS_OFF * INS_PER_TICK) + (T1_MAX_TICKS_OFF * 0.5))
-T2_TASK_SIGNALING_LIMIT: int = (T1_MAX_TICKS_OFF * 5) * INS_PER_TICK
+assert T2_SIGMA > T1_SIGMA
+T2_SPACER_TICKS: int = int(T1_MAX_TICKS_OFF * 1.5)
+T2_SPACER = T2_SPACER_TICKS * INS_PER_TICK
+T2_MAX: int = (T1_MAX_TICKS_OFF * 5) * INS_PER_TICK
 
 # t2_process
 T2_STRESS_RESET: int = 30 * HZ  # seconds until
@@ -69,7 +71,7 @@ T2_MAX_PREEMPTIONS: float = 5  # Max number a task is allowed to be preempted be
 # tm2_task
 TM2_SIGMA: float = 1 - (T2_SIGMA - 1)
 TM2_TASK_SIGNALING_START: int = T2_SPACER * -1
-TM2_TASK_SIGNALING_LIMIT: int = T2_TASK_SIGNALING_LIMIT * -1
+TM2_TASK_SIGNALING_LIMIT: int = T2_MAX * -1
 
 # tm2_node
 TM2_NODE_EARLINESS_CAP: float = 1 - (T2_NODE_LATENESS - 1)

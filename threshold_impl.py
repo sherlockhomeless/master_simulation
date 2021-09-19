@@ -18,11 +18,11 @@ def calc_t1(instructions_planned: int) -> int:
         * max_local_deviation => is a local, relative boundary relating to the details of the task TODO: AND PROCESS
     """
 
-    t1_relative_deviation = instructions_planned * config.T1_SIGMA
-    relative_t1 = max(t1_relative_deviation, config.NO_PREEMPTION)
+    relative_t1 = int(instructions_planned * config.T1_SIGMA)
+    t1_min = config.NO_PREEMPTION + instructions_planned
+    t1_max = config.T1_MAX_VALUE + instructions_planned
 
-    t1 = int(min(relative_t1, config.T1_MAX_VALUE))
-    t1 += instructions_planned
+    t1 = min(max(relative_t1, t1_min), t1_max)
 
     return t1
 
@@ -31,12 +31,14 @@ def compare_t1(instructions_retired_task: int, t1: int) -> int:
     return instructions_retired_task < t1
 
 
-def calc_t2_task(ins_planned: int, t1: int) -> int:
+def calc_t2_task(ins_planned: int, stress: int) -> int:
+    # calc different components
     t2_task_relative = int(ins_planned * config.T2_SIGMA)
-    t2_task_min = max(t2_task_relative, ins_planned + config.T2_SPACER)
-    t2_task = min(t2_task_min, ins_planned + config.T2_TASK_SIGNALING_LIMIT)
-
-    assert t2_task > ins_planned and t2_task > t1
+    t2_task_min = ins_planned + config.T2_SPACER
+    t2_task_max = ins_planned + config.T2_MAX
+    t2_task = min(max(t2_task_relative, t2_task_min), t2_task_max)
+    # hook into stress system
+    t2_task += stress
     return int(t2_task)
 
 
@@ -57,7 +59,6 @@ def calc_t2_process(cur_process: Process, stress: int, task_list: List[Task]) ->
 
         # calculate allowed plan buffer
         process_completion = process.instructions_executed / process.instructions_planned
-
         plan_buffer = process.buffer
         capacity_buffer_deadline = int(plan_buffer * config.T2_CAPACITY_BUFFER - plan_buffer)
         capacity_buffer_per_process = capacity_buffer_deadline / config.NUMBER_PROCESSES

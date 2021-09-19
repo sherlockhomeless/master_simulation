@@ -66,7 +66,6 @@ class Plan:
         tasks_per_process = Plan.generate_tasks_for_processes(number_tasks_per_process, min_len_task, max_len_task)
 
         tasks_for_plan = Plan.generate_realistic_plan(tasks_per_process)
-        Plan.assign_start_end_times(tasks_for_plan)
 
         buffer_list = Plan.generate_buffer_list(tasks_per_process, (min_buffer, max_buffer))
 
@@ -339,7 +338,6 @@ class Plan:
         :return:
         """
 
-        Plan.assign_start_end_times(tasks)
 
         highest_pid = max([x.process_id for x in tasks])
         tasks_per_p = [[] for x in range(highest_pid+1)]

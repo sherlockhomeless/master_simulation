@@ -40,6 +40,9 @@ def vis():
     print('visualize t2 per tick')
     visualize_ticks(logs, ['t2_task', 't2_task_pure', 't2_process_capacity', 't2_process_plan',  't2_node'], 't2_tick')
 
+    print('visualize t2_process and process_lateness')
+    visualize_ticks(list(filter(lambda log: log.process_id[1] == 0, logs)), ['t2_process_capacity', 't2_process_plan', 'lateness_process'], 't2_process_tick')
+
     print('visualize t2 per tick without node')
     visualize_ticks(logs, ['t2_task', 't2_task_pure', 't2_process_capacity', 't2_process_plan'], 't2_tick_wo_node')
 
@@ -58,6 +61,9 @@ def vis():
 
     print('printing t1_task & t2_task for one process')
     visualize_t1_t2_per_process(logs, 0)
+
+    print('visualizing t1 and lateness per task')
+    visualize_t1(logs)
 
 
 def visualize_t1_t2_per_process(logs: List[TickEvent], pid: int):
@@ -112,7 +118,7 @@ def visualize_ticks(logs: List[TickEvent], tracking_values: List[str], figure_na
     save_fig(figure_name)
 
 
-def visualize_plan_real_deviation(p: "Plan", figure_name: str =""):
+def visualize_plan_real_deviation(p: "Plan", figure_name: str = ""):
     plan_length = []
     real_length = []
     dif_length = []
@@ -129,6 +135,20 @@ def visualize_plan_real_deviation(p: "Plan", figure_name: str =""):
     plt.ylabel('length IPT')
     plt.legend()
     save_fig(figure_name)
+
+
+def visualize_t1(logs: List[TickEvent]):
+    """
+    Visualizes t1 including upper & lower bounds to lateness
+    """
+    logs = list(filter(lambda log: log.task_id[1] == 1, logs))
+    x_axis = range(len(logs))
+    plt.plot(x_axis, [config.NO_PREEMPTION/config.INS_PER_TICK] * len(logs), label='t1 lower bound')
+    plt.plot(x_axis, [config.T1_MAX_VALUE/config.INS_PER_TICK] * len(logs), label='t1 upper bound')
+    plt.plot(x_axis, [log.t1_pure[1]/config.INS_PER_TICK for log in logs], label='t1')
+    plt.plot(x_axis, [log.lateness_task[1]/config.INS_PER_TICK for log in logs], label='lateness')
+    plt.legend()
+    save_fig('t1')
 
 
 def save_fig(filename):

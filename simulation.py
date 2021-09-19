@@ -5,10 +5,10 @@ import sys
 from plan import Plan
 from process_runner import ProcessRunner
 import config
+import helper
 
 # BUG: Task_id generation is completely fucked; task 0-n on p0, n+1-m on p1,...
 # TODO: PLAN: Plan is getting reversed, so short processes start late
-# TODO: Visualisierung durchschnittlicher Threshold
 # TODO: Update Node Lateness
 
 
@@ -19,6 +19,7 @@ def run_sim(saved_plan=None):
     else:
         new_plan = Plan.read_plan_from_file(saved_plan)
 
+    new_plan = helper.apply_stretch_to_process(new_plan, 0, 1.1)
     runner = ProcessRunner(new_plan)
     Plan.write_plan_to_file(new_plan, config.WRITE_PLAN)
 

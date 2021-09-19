@@ -1,6 +1,6 @@
 from random import randint
 import numpy as np
-
+from job_scheduler import PredictionFailureSignal
 from instruction_counter import InstructionTracker
 import config
 
@@ -11,7 +11,7 @@ class Task:
     The real length is determined by a random variable
     """
 
-    def __init__(self, length_plan: int, process_id: int, task_id: int, length_real=None, start=0, end=0):
+    def __init__(self, length_plan: int, process_id: int, task_id: int, length_real=None):
         assert type(length_plan) is int
 
         assert type(length_plan) is int
@@ -25,19 +25,15 @@ class Task:
             self.length_real = int(length_real)
         self.process_id = process_id
         self.task_id = task_id
-        self.start_time = start
-        self.end_time = end
 
         self.task_finished = False
         self.is_running = False
-
         self.finished_early = False
         self.finished_late = False
         self.finished_on_time = False
-
         self.is_late = False
         self.was_preempted: int = 0  # counter for the amount of preemptions
-        self.was_signaled: "PredictionFailure" = None
+        self.was_signaled: PredictionFailureSignal = None
 
         # Reference to other tasks in which slot self was inserted too
         # The order is (firstly inserted task, secondly inserted task,...)
@@ -49,7 +45,6 @@ class Task:
         """
         Runs the task, returns 1 if the task hasn't finished and -n if it has finished.
         n is the amount of instructions that are left in the current tick
-        TODO: In real implementation => here only tick granularity is possible
         """
         assert type(ins) is int
         # --- instructions counting ---
@@ -58,7 +53,6 @@ class Task:
         self.instruction_counter.run_instructions_task(ins)
 
         assert type(self.length_plan) is int
-
 
         # --- state checks ---
         if self.length_real <= 0:
@@ -79,6 +73,8 @@ class Task:
             self.instruction_counter.run_instructions_slot(ins)
         else:
             self.shares_slot_with[-1].instruction_counter.run_instructions_slot(ins)
+
+        assert self.length_real >= 0 or self.task_finished
 
     def has_task_finished(self):
         return self.task_finished
@@ -175,7 +171,7 @@ class Task:
         return self.length_plan_unchanged + other.length_plan_unchanged
 
     def __radd__(self, other):
-        return other + self.length_plan
+        return other + self.length_plan_unchanged
 
     @staticmethod
     def get_placeholder_task() -> "Task":

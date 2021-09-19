@@ -4,7 +4,7 @@ import helper
 from task import Task
 from process import Process
 from threshold_interface import thresholder
-from job_scheduler import VRM
+from job_scheduler import JobScheduler
 from plan import Plan
 from helper import PlanFinishedException
 import config
@@ -32,7 +32,7 @@ class ProcessRunner:
         self.cur_task = self.task_list[0]
         self.cur_process = self.processes[self.cur_task.process_id]
         self.cur_process_id = self.cur_process.process_id
-        self.vrm = VRM(self.task_list)
+        self.vrm = JobScheduler(self.task_list)
         self.finished_tasks: List[Task] = []
 
         self.thresholds: Dict = {}
@@ -54,7 +54,6 @@ class ProcessRunner:
             self.t2_pure = 0
             self.tm2_pure = 0
 
-
     def run(self):
         while not self.has_finished():
             self.run_tick()
@@ -63,23 +62,34 @@ class ProcessRunner:
                 self.write_unified_log()
                 if config.LOG_TERM:
                     print(f'time: {self.tick_counter}, task: {self.cur_task}')
+
     def run_tick(self):
         """
         Simulates the equivalent of an timer tick. Updates the Threshold and executes the appropriate actions
         if a threshold is transgressed
         """
+        def hold_at_tick(tick_count: int):
+            """
+            Helper function to stop execution at given tick-count
+            """
+            if self.tick_counter == tick_count:
+                print('stop here')
+
         def is_t2_triggered(cur_process, cur_task) -> bool:
             t2_task_triggered = thresholder.check_t2_task(cur_task.instruction_counter.instructions_task,
                                                           self.thresholds['t2_task'])
             t2_process_triggered = thresholder.check_t2_process(cur_process.lateness, self.thresholds['t2_process'])
             t2_node_triggered = thresholder.check_t2_node(self.lateness_node, self.thresholds['t2_node'])
             t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
-            return t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
+            trigger = t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
+            if trigger:
+                print(f'task: {t2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                      f' process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
+                      f'node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
+                      f'preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
+            return trigger
 
-        # --- update on task & process level ---
-        assert self.cur_task.length_real > 0 or self.cur_task.process_id == -1
-
-        # TODO: Assert t1 is calculated correctly for preempted tasks
+        hold_at_tick(985435183)
         self.update_thresholds()
 
         # --- convenience variables ---
@@ -89,7 +99,7 @@ class ProcessRunner:
 
         # runs the full set of instructions on the current task
         cur_task.run(self.ipt)
-
+        self.update_process_and_node_lateness()
         # --- Task has finished ---
         if cur_task.has_task_finished():
             try:
@@ -100,14 +110,13 @@ class ProcessRunner:
 
         # --- Task has NOT finished ---
         elif cur_task.is_task_late():
-            instructions_run_task = cur_task.instruction_counter.instructions_task
             instructions_run_slot = cur_task.get_instructions_cur_slot()
 
             if instructions_run_slot >= self.thresholds['t1']:
                 self.preempt_current_process()
 
-            if is_t2_triggered(cur_process, cur_task):
-                self.signal_t2()
+        if is_t2_triggered(cur_process, cur_task):
+            self.signal_t2()
 
         self.tick_counter += 1
 
@@ -121,10 +130,9 @@ class ProcessRunner:
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
                 self.task_list = self.vrm.signal_t_m2(self.tick_counter, cur_task, self.task_list)
-        self.update_process_node_lateness()
+        self.update_process_and_node_lateness()
         self.pick_next_task()
-        #if config.LOG_TERM:
-        print(f'finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
+        print(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
         self.cur_task.run(instructions_left_in_tick)
 
     def preempt_current_process(self):
@@ -161,9 +169,9 @@ class ProcessRunner:
                 self.task_list.remove(t)
                 self.task_list.insert(insertion_slot-1, t)
             preempted_task.preempt(insertion_task)
+
         # --- convenience variables ---
         preempted_task = self.cur_task
-        preempted_task.was_preempted += 1
         cur_task_id = self.cur_task.task_id
         cur_process_id = self.cur_task.process_id
         next_task_index = self.search_task_following(cur_task_id)
@@ -179,7 +187,9 @@ class ProcessRunner:
                 insertion_index = find_slot_for_preemption(next_task_index)
                 insertion_task = self.task_list[insertion_index]
             except IndexError:
-                raise NotImplementedError
+                if len(self.task_list) <= 1:
+                    raise PlanFinishedException
+                insertion_task = self.task_list[0]
 
             # preempted_task is of same process as found task
             if insertion_task.process_id == cur_process_id and insertion_task not in preempted_task.shares_slot_with:
@@ -200,12 +210,16 @@ class ProcessRunner:
         move_preempted_task(preempted_task, insertion_index)
 
         # --- move plan forward and set timer ---
-        self.cur_task.was_preempted = True
         self.cur_task = self.task_list[0]
         self.tick_counter += config.COST_CONTEXT_SWITCH
 
         # mark the task as already preempted
         preempted_task.was_preempted += 1
+        print(f'[{self.tick_counter}][preemption] task {preempted_task.task_id} was preempted {preempted_task.was_preempted} times')
+
+        if self.cur_task.task_id == -1:
+            self.pick_next_task()
+            return  # the assert below does not need to hold in this case
         assert len(self.task_list) == len_plan_start
 
     def pick_next_task(self):
@@ -233,6 +247,7 @@ class ProcessRunner:
                 self.cur_task = self.task_list[0]
             except IndexError:
                 raise PlanFinishedException
+            print(f'[{self.tick_counter}] idling')
 
         def handle_unallocated_slot():
             """
@@ -255,23 +270,22 @@ class ProcessRunner:
                 task_to_assign = list(filter(lambda t: t.process_id == latest_process.process_id, preempted_task_list))[0]
                 assign_task_to_free_slot(task_to_assign, self.task_list)
 
-        self.finished_tasks.append(self.cur_task)
-        self.task_list = self.task_list[1:]
-        if len(self.task_list) == 0:
-            raise PlanFinishedException
-        self.tick_counter += config.COST_CONTEXT_SWITCH
-        self.cur_task = self.task_list[0]
         if self.cur_task.process_id == -1:
             handle_unallocated_slot()
-        self.cur_process = self.processes[self.cur_task.process_id]
+            return
+
+        self.finish_cur_task()
+
+        self.tick_counter += config.COST_CONTEXT_SWITCH
+        if self.cur_task.process_id == -1:
+            handle_unallocated_slot()
 
     def update_thresholds(self):
         """
         It calculates all the thresholds relevant for the upcoming timer tick.
         :return:
         """
-        if self.tick_counter == 15006:
-            print("del")
+
         cur_task = self.cur_task
 
         cur_process_id = cur_task.process_id
@@ -291,7 +305,7 @@ class ProcessRunner:
         self.thresholds['t1_pure'] = t1 - instructions_planned_task
 
         # --- calculate t2 ---
-        t2_task = thresholder.compute_t2_task(instructions_planned_task, self.thresholds['t1'])
+        t2_task = thresholder.compute_t2_task(instructions_planned_task, self.stress * config.T2_STRESS_GAIN)
         self.thresholds['t2_task'] = t2_task
         self.thresholds['t2_task_pure'] = t2_task - instructions_planned_task
         t2_process = thresholder.compute_t2_process(cur_process, self.stress, self.finished_tasks + [cur_task])
@@ -312,10 +326,10 @@ class ProcessRunner:
         self.thresholds['tm2_node'] = tm2_node
 
         try:
-            assert self.thresholds['t1'] > self.cur_task.length_plan_unchanged
+            assert self.thresholds['t1'] > instructions_planned
+            assert self.thresholds['t1'] < self.thresholds['t2_task'] or self.cur_task.was_preempted
         except AssertionError:
-            print("cool")
-        assert self.thresholds['t1'] < self.thresholds['t2_task']
+            print("del")
 
     def has_finished(self) -> bool:
         return False if len(self.task_list) > 0 else True
@@ -351,12 +365,16 @@ class ProcessRunner:
         else:
             raise NotImplementedError
 
-    def update_process_node_lateness(self):
+    def update_process_and_node_lateness(self):
+        """
+        Updates the lateness of the current process and of the node
+
+        :return:
+        """
+
+        self.cur_process.update_lateness()
         lateness_node = sum([p.lateness for p in self.processes])
-        lateness_process = sum([t.get_lateness_task() for t in filter
-        (lambda task: task.process_id == self.cur_process.process_id, self.finished_tasks)])
         self.lateness_node = lateness_node
-        self.cur_process.lateness = lateness_process
 
     def transgresses_t1(self) -> bool:
         """
@@ -374,6 +392,20 @@ class ProcessRunner:
         """
         self.stress = config.T2_STRESS_RESET
         self.vrm.signal_t2(self.tick_counter, self.cur_task, self.task_list)
+
+    def finish_cur_task(self):
+        try:
+            assert self.cur_task.has_task_finished()
+        except AssertionError:
+            print('del')
+
+        self.finished_tasks.append(self.cur_task)
+        self.task_list = self.task_list[1:]
+        if len(self.task_list) == 0:
+            raise PlanFinishedException
+        else:
+            self.cur_task = self.task_list[0]
+            self.cur_process = self.processes[self.cur_task.process_id]
 
     def write_unified_log(self) -> None:
         """

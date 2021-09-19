@@ -1,7 +1,6 @@
 import unittest
 from plan import Plan
 from task import Task
-import task
 import config
 
 

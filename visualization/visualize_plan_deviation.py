@@ -3,6 +3,7 @@ from config import *
 import matplotlib.pyplot as plt
 import math
 
+
 def visualize_plan_deviation(n=100000):
     # generate list of tasks
     tasks = []
@@ -32,9 +33,9 @@ def visualize_plan_deviation(n=100000):
     buckets.sort()
 
     plt.hist([(x.length_plan - x.length_real)/INS_PER_TICK for x in tasks], bins=1000)
-    plt.ylabel('Occurances')
-    plt.xlabel('Plan deviation worth in timer ticks')
-    caption = f'task length is {int(TASK_MAX_LEN/INS_PER_TICK)} timer ticks'
+    plt.ylabel('occurrences')
+    plt.xlabel('Plan deviation in timer ticks')
+    caption = f'the planned task length is {int(TASK_MAX_LEN/INS_PER_TICK)} timer ticks'
     plt.title(caption)
     plt.savefig('../pics/plan_dev.png', dpi=300)
 
