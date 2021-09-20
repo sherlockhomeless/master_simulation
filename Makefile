@@ -5,4 +5,4 @@ run_vis:
 run:
 	${PYTHON} simulation.py logs/plan.log
 run_new:
-    ${PYTHON} simulation.py
+	${PYTHON} simulation.py

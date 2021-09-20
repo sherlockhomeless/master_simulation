@@ -87,7 +87,7 @@ LOG: bool = True  # Is debugging enabled?
 LOG_TERM: bool = False
 logger = logging.getLogger()
 
-base_folder_logging: str = "/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation/logs/"
+base_folder_logging: str = PROJECT_BASE + "/logs/"
 unified_log_path: str = base_folder_logging + "unified_tick.log"
 tick_log_path: str = base_folder_logging + "tick.log"
 thresh_log_path: str = base_folder_logging + "per_tick_thresh_sum.log"
@@ -96,7 +96,7 @@ thresh_log_pure: str = base_folder_logging + "per_tick_thresh_pure.log"
 
 if LOG is True:
     LOG_FORMAT = '[%(module)s][%(funcName)s]-%(levelname)s: %(message)s '
-    logging.basicConfig(filename="/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation/logs/all.log",
+    logging.basicConfig(filename= PROJECT_BASE + "/logs/all.log",
                         level=logging.INFO,
                         format=LOG_FORMAT,
                         filemode='w')

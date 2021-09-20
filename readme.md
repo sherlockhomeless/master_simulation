@@ -12,5 +12,9 @@ The code in this project was primarily used to understand the behaviour of diffe
 
 
 ## Run it
+### Dependencies
+The simulation uses little dependencies. Those can be easily installed using pip:
 
+    sudo pip3 install numpy
 
+### Configuration
