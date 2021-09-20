@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from os import listdir
+from os import listdir, makedirs
 from os.path import join
 from typing import List
 import matplotlib.pyplot as plt
@@ -21,7 +21,7 @@ Threshold logging done in files of format thresh_[PROCESS_ID].log
 
 
 #  ---file names---
-BASE_FOLDER = "/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation"
+BASE_FOLDER = config.PROJECT_BASE
 LOG_FOLDER = join(BASE_FOLDER, "logs")  # Base-Folder for all log-files
 PIC_FOLDER = join(BASE_FOLDER, "pics")  # Base-Folder for graphics
 THRESH2_ALL = 'thresh2_all.log'  # all t2 logs of all processes
@@ -156,7 +156,10 @@ def visualize_t1(logs: List[TickEvent]):
 
 def save_fig(filename):
     plt.tight_layout()
-    plt.savefig(f'{PIC_FOLDER}/{filename}.png', dpi=300)
+    try:
+        plt.savefig(f'{PIC_FOLDER}/{filename}.png', dpi=300)
+    except FileNotFoundError:
+        makedirs(PIC_FOLDER)
     plt.clf()  # should clear all axis
 
 

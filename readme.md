@@ -13,8 +13,8 @@ The code in this project was primarily used to understand the behaviour of diffe
 
 ## Run it
 ### Dependencies
-The simulation uses little dependencies. Those can be easily installed using pip:
+The simulation uses no dependencies, except numpy and matplotlib. Using pip, both modules can be installed with the following line:
 
-    sudo pip3 install numpy
+    sudo pip3 install numpy matplotlib
 
 ### Configuration
