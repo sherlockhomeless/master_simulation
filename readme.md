@@ -18,3 +18,16 @@ The simulation uses no dependencies, except numpy and matplotlib. Using pip, bot
     sudo pip3 install numpy matplotlib
 
 ### Configuration
+
+In order to be able to run the simulation, the base directory has to be set in **config.py**:
+
+    PROJECT_BASE: str = "/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation"
+
+### Makefile
+
+Using the **Makefile**, the project can be run in four different ways:
+
+1. `make run`: Runs the simulation using the plan saved in `logs/plan.log`
+1. `make run_new`: Generates a new plan and runs it
+1. `make vis`: Uses the current files in `logs` and generates a visualization corresponding to the previous logged run
+1. `make run_vis`: Combines `run` and `vis`

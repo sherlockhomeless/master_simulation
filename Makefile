@@ -6,3 +6,5 @@ run:
 	${PYTHON} simulation.py logs/plan.log
 run_new:
 	${PYTHON} simulation.py
+vis:
+	cd visualization && python3 vis.py
