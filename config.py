@@ -45,7 +45,7 @@ T1_SIGMA: float = 1.1
 
 # t2
 # t2_task
-T2_SIGMA: float = 1.3
+T2_SIGMA: float = 1.2
 assert T2_SIGMA > T1_SIGMA
 T2_SPACER_TICKS: int = int(T1_MAX_TICKS_OFF * 1.5)
 T2_SPACER = T2_SPACER_TICKS * INS_PER_TICK

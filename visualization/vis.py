@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 
 from log_parser import TickEvent, LogParser
 
+import sys
+sys.path.insert(0, '..')
+
 import plan
 import config
 
