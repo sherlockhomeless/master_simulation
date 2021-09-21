@@ -1,10 +1,8 @@
 import logging
-
+import sys
 # --- ADMIN CONFIG VARIABLES ---
 PROJECT_BASE: str = "/home/ml/Dropbox/Master-Arbeit/code/threshold_simulation"
 WRITE_PLAN: str = "logs/plan.log"
-LOG_THRESHOLDS: str = "logs/thresholds_X.log" # X will be the number of the pid
-LOG_THRESHOLDS_PURE: str = "logs/thresholds_pure_X.log"
 TESTING: bool = False
 JUST_WRITE_PLAN: bool = False  # just writes a new plan to file
 
@@ -30,8 +28,8 @@ FREE_TIME: float = 0.1  # Percentage of the plan that is not assigned
 NUMBER_PROCESSES: int = 3
 TASK_MIN_LEN: int = INS_PER_TICK
 TASK_MAX_LEN: int = INS_PER_TICK * 50
-PROCESS_MIN_LEN: int = 500  # Minimum amount of tasks in process
-PROCESS_MAX_LEN: int = 750  # Maximum amount of tasks in process
+PROCESS_MIN_LEN: int = 250  # Minimum amount of tasks in process
+PROCESS_MAX_LEN: int = 300  # Maximum amount of tasks in process
 BUFFER_MIN: float = 5  # Minimal buffer size in Integer => 2 = 2%
 BUFFER_MAX: float = 20  # Maximal buffer size in Integer => 10 = 10%
 
@@ -88,17 +86,14 @@ logger = logging.getLogger()
 
 base_folder_logging: str = PROJECT_BASE + "/logs/"
 unified_log_path: str = base_folder_logging + "unified_tick.log"
-tick_log_path: str = base_folder_logging + "tick.log"
-thresh_log_path: str = base_folder_logging + "per_tick_thresh_sum.log"
-thresh_log_pure: str = base_folder_logging + "per_tick_thresh_pure.log"
 
 
 if LOG is True:
     LOG_FORMAT = '[%(module)s][%(funcName)s]-%(levelname)s: %(message)s '
-    logging.basicConfig(filename= PROJECT_BASE + "/logs/all.log",
-                        level=logging.INFO,
+    logging.basicConfig(level=logging.INFO,
                         format=LOG_FORMAT,
-                        filemode='w')
+                        handlers=[logging.FileHandler(PROJECT_BASE + "/logs/all.log"),
+                                  logging.StreamHandler(sys.stdout)])
 
 else:
     logging.basicConfig(filename="/dev/null", level=logging.CRITICAL)

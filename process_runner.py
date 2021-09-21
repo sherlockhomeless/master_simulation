@@ -11,7 +11,7 @@ import config
 
 
 class ProcessRunner:
-    def __init__(self, plan: Plan, tick_log=config.tick_log_path, thresh_log=config.thresh_log_path, thresh_log_pure=config.thresh_log_pure):
+    def __init__(self, plan: Plan):
         """
         The "runtime" environment for simulating a running node.
 
@@ -44,12 +44,7 @@ class ProcessRunner:
 
         if config.LOG is True:
             self.log_unified = open(config.unified_log_path, 'w')
-            self.tick_log = open(tick_log, 'w')
-            self.log_thresh = open(thresh_log, 'w')
-            self.log_thresh.write('{tick} {task_id} {t1} {t2} {t_m2}\n')
 
-            self.log_thresh_pure = open(thresh_log_pure, 'w')
-            self.log_thresh_pure.write('{tick} {task_id} {t1} {t2} {t_m2}\n')
             self.t1_pure = 0
             self.t2_pure = 0
             self.tm2_pure = 0
@@ -60,10 +55,9 @@ class ProcessRunner:
 
             if config.LOG and self.cur_task.task_id != -1:
                 self.write_unified_log()
-                if config.LOG_TERM:
-                    print(f'time: {self.tick_counter}, task: {self.cur_task}')
-        print(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
-              f'sent {len(self.job_sched.received_signals)} PFSs')
+            config.logger.debug(f'[{self.tick_counter}]: current task {self.cur_task}')
+        config.logger.info(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
+                           f'sent {len(self.job_sched.received_signals)} PFSs')
 
     def run_tick(self):
         """
@@ -85,13 +79,12 @@ class ProcessRunner:
             t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
             trigger = t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
             if trigger:
-                print(f'task: {t2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                config.logger.info(f'task: {t2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
                       f' process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
                       f'node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
                       f'preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
             return trigger
 
-        hold_at_tick(985435183)
         self.update_thresholds()
 
         # --- convenience variables ---
@@ -135,7 +128,7 @@ class ProcessRunner:
                 self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
         self.update_process_and_node_lateness()
         self.pick_next_task()
-        print(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
+        config.logger.info(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
         self.cur_task.run(instructions_left_in_tick)
 
     def preempt_current_process(self):
@@ -218,7 +211,7 @@ class ProcessRunner:
 
         # mark the task as already preempted
         preempted_task.was_preempted += 1
-        print(f'[{self.tick_counter}][preemption] task {preempted_task.task_id} was preempted {preempted_task.was_preempted} times')
+        config.logger.info(f'[{self.tick_counter}][preemption] task {preempted_task.task_id} was preempted {preempted_task.was_preempted} times')
 
         if self.cur_task.task_id == -1:
             self.pick_next_task()
@@ -250,7 +243,7 @@ class ProcessRunner:
                 self.cur_task = self.task_list[0]
             except IndexError:
                 raise PlanFinishedException
-            print(f'[{self.tick_counter}] idling')
+            config.logger.info(f'[{self.tick_counter}] idling')
 
         def handle_unallocated_slot():
             """
@@ -329,11 +322,8 @@ class ProcessRunner:
         tm2_node = thresholder.compute_tm2_node(self.thresholds['t2_node'])
         self.thresholds['tm2_node'] = tm2_node
 
-        try:
-            assert self.thresholds['t1'] > instructions_planned
-            assert self.thresholds['t1'] < self.thresholds['t2_task'] or self.cur_task.was_preempted
-        except AssertionError:
-            print("del")
+        assert self.thresholds['t1'] > instructions_planned
+        assert self.thresholds['t1'] < self.thresholds['t2_task'] or self.cur_task.was_preempted
 
     def has_finished(self) -> bool:
         return False if len(self.task_list) > 0 else True
@@ -398,10 +388,8 @@ class ProcessRunner:
         self.job_sched.signal_t2(self.tick_counter, self.cur_task, self.task_list)
 
     def finish_cur_task(self):
-        try:
-            assert self.cur_task.has_task_finished()
-        except AssertionError:
-            print('del')
+        assert self.cur_task.has_task_finished()
+
 
         self.finished_tasks.append(self.cur_task)
         self.task_list = self.task_list[1:]
@@ -460,8 +448,7 @@ class ProcessRunner:
         :return:
         """
         # format: cur_jobid cur_process_id cur_task_id cur_t1 cur_t2 cur_-t2
-        if self.t1_pure < 0:
-            print("lame")  # todo: t1 > 0
+
         assert self.t1_pure > 0
         assert self.t2_task_pure > 0
         assert self.tm2_task_pure < 0

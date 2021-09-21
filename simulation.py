@@ -23,7 +23,7 @@ def run_sim(saved_plan=None):
     runner = ProcessRunner(new_plan)
     Plan.write_plan_to_file(new_plan, config.WRITE_PLAN)
 
-    print(f'Running simulation {new_plan}')
+    config.logger.info(f'Running simulation {new_plan}')
     if not config.JUST_WRITE_PLAN:
         runner.run()
 
@@ -33,7 +33,7 @@ def run_sim(saved_plan=None):
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
-        print(f'running simulation with plan {sys.argv[1]}')
+        config.logger.info(f'running simulation with plan {sys.argv[1]}')
         run_sim(saved_plan=sys.argv[1])
     else:
         run_sim()

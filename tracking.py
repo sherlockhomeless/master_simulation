@@ -63,8 +63,6 @@ class Tracker:
         try:
             self.lateness_per_task[task_id] += ins
         except IndexError:
-            print("index_error_id:", task_id)
-            print("length lateness_per_pask", len(self.lateness_per_task))
             assert False
 
 

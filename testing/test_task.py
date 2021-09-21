@@ -29,7 +29,6 @@ class TestTask(unittest.TestCase):
         for key in counts:
             real_values[key] = counts[key]
 
-        print(real_values)
         y = np.array(real_values)
         plt.bar(range(0, 200), y)
         plt.show()

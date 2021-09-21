@@ -87,7 +87,7 @@ class Plan:
                 for t in plan:
                     f.write(str(t)+'\n')
 
-        print(f'plan with {len(plan)} tasks created')
+        config.logger.info(f'plan with {len(plan)} tasks created')
         return plan
 
     @staticmethod
