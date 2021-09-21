@@ -30,10 +30,10 @@ FREE_TIME: float = 0.1  # Percentage of the plan that is not assigned
 NUMBER_PROCESSES: int = 3
 TASK_MIN_LEN: int = INS_PER_TICK
 TASK_MAX_LEN: int = INS_PER_TICK * 50
-PROCESS_MIN_LEN: int = 150  # Minimum amount of tasks in process
-PROCESS_MAX_LEN: int = 200  # Maximum amount of tasks in process
-BUFFER_MIN: float = 2  # Minimal buffer size in Integer => 2 = 2%
-BUFFER_MAX: float = 10  # Maximal buffer size in Integer => 10 = 10%
+PROCESS_MIN_LEN: int = 500  # Minimum amount of tasks in process
+PROCESS_MAX_LEN: int = 750  # Maximum amount of tasks in process
+BUFFER_MIN: float = 5  # Minimal buffer size in Integer => 2 = 2%
+BUFFER_MAX: float = 20  # Maximal buffer size in Integer => 10 = 10%
 
 # Threshold-Config
 # t1
@@ -52,13 +52,12 @@ T2_SPACER = T2_SPACER_TICKS * INS_PER_TICK
 T2_MAX: int = (T1_MAX_TICKS_OFF * 5) * INS_PER_TICK
 
 # t2_process
-T2_STRESS_RESET: int = 30 * HZ  # seconds until
+T2_STRESS_RESET: int = 30 * HZ
 T2_STRESS_GAIN: int = int(0.25 * INS_PER_TICK)
 T2_AVAILABLE_PLAN_BUFFER = 0.7
 T2_CAPACITY_BUFFER = 1.1
 ASSIGNABLE_BUFFER: float = 0.7
-T2_MINIMUM_USABLE_BUFFER: float = 0.05  # Minimum of the available buffer that is usable
-T2_PROCESS_MINIMUM = int(RESCHEDULE_TIME * 1.5)
+T2_PROCESS_MINIMUM = int(RESCHEDULE_TIME * 1.1)
 
 # t2_node
 T2_NODE_LATENESS: float = 1.1

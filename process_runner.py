@@ -32,7 +32,7 @@ class ProcessRunner:
         self.cur_task = self.task_list[0]
         self.cur_process = self.processes[self.cur_task.process_id]
         self.cur_process_id = self.cur_process.process_id
-        self.vrm = JobScheduler(self.task_list)
+        self.job_sched = JobScheduler(self.task_list)
         self.finished_tasks: List[Task] = []
 
         self.thresholds: Dict = {}
@@ -62,6 +62,8 @@ class ProcessRunner:
                 self.write_unified_log()
                 if config.LOG_TERM:
                     print(f'time: {self.tick_counter}, task: {self.cur_task}')
+        print(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
+              f'sent {len(self.job_sched.received_signals)} PFSs')
 
     def run_tick(self):
         """
@@ -119,6 +121,7 @@ class ProcessRunner:
             self.signal_t2()
 
         self.tick_counter += 1
+        self.stress -= 1 if self.stress > 0 else 0
 
     def handle_task_finish(self, cur_process, cur_task, cur_task_id):
         instructions_left_in_tick = cur_task.get_overdone_instructions()
@@ -129,7 +132,7 @@ class ProcessRunner:
                                                             self.thresholds['tm2_task'])
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
-                self.task_list = self.vrm.signal_t_m2(self.tick_counter, cur_task, self.task_list)
+                self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
         self.update_process_and_node_lateness()
         self.pick_next_task()
         print(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
@@ -309,6 +312,7 @@ class ProcessRunner:
         self.thresholds['t2_task'] = t2_task
         self.thresholds['t2_task_pure'] = t2_task - instructions_planned_task
         t2_process = thresholder.compute_t2_process(cur_process, self.stress, self.finished_tasks + [cur_task])
+
         self.thresholds['t2_process'] = t2_process
         planned_length_all_finished_tasks = sum(list([t.length_plan_unchanged for t in self.finished_tasks]))
         length_first_10 = sum(self.task_list[:10])
@@ -391,7 +395,7 @@ class ProcessRunner:
         In this simulation this step is kept very simple
         """
         self.stress = config.T2_STRESS_RESET
-        self.vrm.signal_t2(self.tick_counter, self.cur_task, self.task_list)
+        self.job_sched.signal_t2(self.tick_counter, self.cur_task, self.task_list)
 
     def finish_cur_task(self):
         try:

@@ -137,7 +137,7 @@ class TestProcessRunner(unittest.TestCase):
         pr = ProcessRunner.get_process_runner(p)
 
         pr.run_tick()
-        self.assertTrue(pr.vrm.get_last_signal()[1] is t0)
+        self.assertTrue(pr.job_sched.get_last_signal()[1] is t0)
 
     def test_assign_new(self):
         """
