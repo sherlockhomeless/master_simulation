@@ -47,8 +47,6 @@ class JobScheduler:
                                            tasks))
         JobScheduler.reschedule_simple(all_tasks_to_stretch)
 
-        config.logger.warn(f'[{time_stamp}]: {signaling_task} caused a prediction failure signal')
-
     def signal_t_m2(self, time_stamp, signaling_task, tasks):
         """
         Signals T-2
@@ -61,7 +59,6 @@ class JobScheduler:
         cur_task_pid = signaling_task.process_id
         all_tasks_to_stretch = list(filter(lambda task: task.process_id == cur_task_pid, tasks))
         JobScheduler.reschedule_simple(all_tasks_to_stretch, shrink=True)
-        config.logger.info(f'{time_stamp}{signaling_task} caused a prediction failure signal')
         assert length_original != tasks[0].length_plan
         return tasks
 

@@ -79,7 +79,7 @@ class ProcessRunner:
             t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
             trigger = t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
             if trigger:
-                config.logger.info(f'task: {t2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                config.logger.warn(f'task: {t2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
                       f' process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
                       f'node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
                       f'preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
@@ -126,6 +126,9 @@ class ProcessRunner:
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
                 self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
+                config.logger.warn(
+                    f't-2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                    f't-2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
         self.update_process_and_node_lateness()
         self.pick_next_task()
         config.logger.info(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')

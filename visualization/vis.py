@@ -68,6 +68,9 @@ def vis():
     print('visualizing t1 and lateness per task')
     visualize_t1(logs)
 
+    print('visualize node lateness and t2_node/tm2_node')
+    visualize_node(logs)
+
 
 def visualize_t1_t2_per_process(logs: List[TickEvent], pid: int):
     """
@@ -152,6 +155,16 @@ def visualize_t1(logs: List[TickEvent]):
     plt.plot(x_axis, [log.lateness_task[1]/config.INS_PER_TICK for log in logs], label='lateness')
     plt.legend()
     save_fig('t1')
+
+
+def visualize_node(logs):
+    x_axis = range(len(logs))
+    plt.plot(x_axis, [logs.lateness_node[1]/config.INS_PER_TICK] * len(logs), label='node lateness')
+    plt.plot(x_axis, [logs.tm2_node[1]/config.INS_PER_TICK] * len(logs), label='tm2_node')
+    plt.plot(x_axis, [logs.t2_node[1]/config.INS_PER_TICK] * len(logs), label='t2_node')
+    plt.legend()
+    save_fig('node_lateness')
+
 
 
 def save_fig(filename):
