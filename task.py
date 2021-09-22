@@ -143,6 +143,7 @@ class Task:
         :param other_task: Task self was inserted before
         """
         assert other_task.process_id == self.process_id
+        assert other_task is not self
         self.is_running = False
         # share information with other tasks that had to share their slot
         if len(self.shares_slot_with) > 0 and self.shares_slot_with[0].shares_slot:
@@ -150,7 +151,6 @@ class Task:
 
         self.shares_slot_with.append(other_task)
         other_task.shares_slot = True
-        config.logger.debug(f'{self} shares slot with {self.shares_slot_with}')
 
     def signal(self, sig: "PredictionFailure"):
         """

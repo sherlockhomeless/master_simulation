@@ -28,8 +28,8 @@ FREE_TIME: float = 0.1  # Percentage of the plan that is not assigned
 NUMBER_PROCESSES: int = 3
 TASK_MIN_LEN: int = INS_PER_TICK
 TASK_MAX_LEN: int = INS_PER_TICK * 50
-PROCESS_MIN_LEN: int = 250  # Minimum amount of tasks in process
-PROCESS_MAX_LEN: int = 300  # Maximum amount of tasks in process
+PROCESS_MIN_LEN: int = 50  # Minimum amount of tasks in process
+PROCESS_MAX_LEN: int = 100  # Maximum amount of tasks in process
 BUFFER_MIN: float = 5  # Minimal buffer size in Integer => 2 = 2%
 BUFFER_MAX: float = 20  # Maximal buffer size in Integer => 10 = 10%
 
@@ -89,7 +89,7 @@ unified_log_path: str = base_folder_logging + "unified_tick.log"
 
 
 if LOG is True:
-    LOG_FORMAT = '[%(module)s][%(funcName)s]-%(levelname)s: %(message)s '
+    LOG_FORMAT = '[%(funcName)s]-%(levelname)s: %(message)s '
     logging.basicConfig(level=logging.INFO,
                         format=LOG_FORMAT,
                         handlers=[logging.FileHandler(PROJECT_BASE + "/logs/all.log"),

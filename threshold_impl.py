@@ -58,7 +58,7 @@ def calc_t2_process(cur_process: Process, stress: int, task_list: List[Task]) ->
         capacity_buffer = int(length_all_tasks * (config.T2_CAPACITY_BUFFER - 1))
 
         # calculate allowed plan buffer
-        process_completion = process.instructions_executed / process.instructions_planned
+        process_completion = process.get_process_completion()
         plan_buffer = process.buffer
         capacity_buffer_deadline = int(plan_buffer * config.T2_CAPACITY_BUFFER - plan_buffer)
         capacity_buffer_per_process = capacity_buffer_deadline / config.NUMBER_PROCESSES

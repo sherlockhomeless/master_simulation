@@ -79,12 +79,12 @@ class ProcessRunner:
             t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
             trigger = t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
             if trigger:
-                config.logger.warn(f'task: {t2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                config.logger.warn(f'[{self.tick_counter}] task: {t2_task_triggered} ({self.cur_task.get_lateness_task()})/{self.thresholds["t2_task"]},'
                       f' process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
                       f'node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
                       f'preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
             return trigger
-
+        hold_at_tick(12030237415)
         self.update_thresholds()
 
         # --- convenience variables ---
@@ -108,7 +108,9 @@ class ProcessRunner:
             instructions_run_slot = cur_task.get_instructions_cur_slot()
 
             if instructions_run_slot >= self.thresholds['t1']:
-                self.preempt_current_process()
+                old_task = self.cur_task
+                self.preempt_current_task()
+                config.logger.info(f'[{self.tick_counter}] {old_task} was preempted for {self.cur_task}')
 
         if is_t2_triggered(cur_process, cur_task):
             self.signal_t2()
@@ -126,32 +128,33 @@ class ProcessRunner:
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
                 self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
-                config.logger.warn(
-                    f't-2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
-                    f't-2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
+                config.logger.warn(f'{self.tick_counter}'
+                                   f't-2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                                   f't-2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
         self.update_process_and_node_lateness()
         self.pick_next_task()
         config.logger.info(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
         self.cur_task.run(instructions_left_in_tick)
 
-    def preempt_current_process(self):
+    def find_slot_for_preemption(self, start_search_index, assign_free_slots=False):
+        """
+        :param start_search_index: start searching from here
+        :param assign_free_slots: Enable/Disable looking for free slots
+        :return: Index of the task slot found in the plan
+        """
+        for i in range(start_search_index, len(self.task_list)):
+            if self.task_list[i].process_id == -1 and assign_free_slots:
+                return i
+            elif self.task_list[i].process_id == self.cur_task.process_id:
+                return i
+        raise PlanFinishedException
+
+    def preempt_current_task(self):
         """
         preempts the currently running task, inserts the remaining part where the next task of the process would start and starts the next process
         [CHECK] where to change things after preemption?
         [TODO] Let process only run amount of time that other task has available
         """
-        def find_slot_for_preemption(start_search_index, assign_free_slots=False):
-            """
-            :param start_search_index: start searching from here
-            :param assign_free_slots: Enable/Disable looking for free slots
-            :return: Index of the task slot found in the plan
-            """
-            for i in range(start_search_index, len(self.task_list)):
-                if self.task_list[i].process_id == -1 and assign_free_slots:
-                    return i
-                elif self.task_list[i].process_id == cur_process_id:
-                    return i
-            raise IndexError
 
         def move_preempted_task(preempted_task: Task, insertion_slot: int):
             """
@@ -175,38 +178,17 @@ class ProcessRunner:
         cur_process_id = self.cur_task.process_id
         next_task_index = self.search_task_following(cur_task_id)
         len_plan_start = len(self.task_list)
-        found_slot = False
 
-        if config.LOG:
-            config.logger.info(f'@{self.tick_counter}:{preempted_task} was preempted')
+        config.logger.info(f'[{self.tick_counter}]:{preempted_task} was preempted')
 
         # looking for a slot in the plan where preempted_task can get inserted too
-        while found_slot is False:
-            try:
-                insertion_index = find_slot_for_preemption(next_task_index)
-                insertion_task = self.task_list[insertion_index]
-            except IndexError:
-                if len(self.task_list) <= 1:
-                    raise PlanFinishedException
-                insertion_task = self.task_list[0]
-
-            # preempted_task is of same process as found task
-            if insertion_task.process_id == cur_process_id and insertion_task not in preempted_task.shares_slot_with:
-                config.logger.debug(f'task {preempted_task} may inserted before {insertion_task}')
-                found_slot = True
-
-            # found task is unallocated
-            elif config.INSERT_PREEMPTED_IN_FREE and insertion_task.process_id == -1:
-                preempted_task.shares_slot(insertion_index)
-                config.logger.debug(f'task {preempted_task} may be inserted before free slot')
-
-            # found nothing fitting at current slot
-            else:
-                next_task_index += 1
-                continue
+        insertion_index = self.find_slot_for_preemption(next_task_index)
+        insertion_task = self.task_list[insertion_index]
+        config.logger.debug(f'[{self.tick_counter}] task {preempted_task} is inserted before {insertion_task}')
 
         # --- inserting preempted-task before slot ---
         move_preempted_task(preempted_task, insertion_index)
+        preempted_task.shares_slot = True
 
         # --- move plan forward and set timer ---
         self.cur_task = self.task_list[0]
@@ -490,4 +472,4 @@ class ProcessRunner:
         return ProcessRunner(new_plan)
 
     def __repr__(self) -> str:
-        return f"{{'lateness_node': {self.lateness_node}}}"
+        return f"{'lateness_node': {self.lateness_node}}"

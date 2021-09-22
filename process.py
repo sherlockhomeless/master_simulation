@@ -28,7 +28,7 @@ class Process:
         self.buffer = int(buffer)  # unedited, pure number of instructions that an process has until its deadline
 
         # state tracking
-        self.instructions_executed = 0  # count of all instructions already done
+        self.instructions_executed = 1  # count of all instructions already done; set to 1 to prevent division by 0
         self.instructions_left = sum(tasks)  # instructions that are left according to plan
         self.instructions_planned = self.instructions_left
         self.process_length = self.instructions_left  # none changing amount of instructions
@@ -46,6 +46,14 @@ class Process:
         self.lateness = lateness_process
         self.instructions_executed += config.INS_PER_TICK
 
+    def get_process_completion(self) -> float:
+        """
+        :return: process completion, 1 represents 100%
+        """
+
+        completion = self.instructions_planned / self.instructions_executed
+        return min(completion, 1.0)
+
     @staticmethod
     def _generate_random_process(tasks=[], num_tasks=10, pid=0):
         """
@@ -57,7 +65,7 @@ class Process:
         """
         if not tasks:
             for t in range(num_tasks):
-                tasks.append(Task((randint(1,10)*config.INS_PER_TICK), t, pid))
+                tasks.append(Task((randint(1, 10)*config.INS_PER_TICK), t, pid))
         return Process(tasks)
 
     def __repr__(self):

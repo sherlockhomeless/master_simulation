@@ -153,5 +153,6 @@ class TestProcessRunner(unittest.TestCase):
         self.assertEqual(len(pr.finished_tasks), 1)
         self.assertTrue(pr.finished_tasks[0].finished_late)
 
-    def test_receive_new_plan(self):
-        pass
+    def test_find_preemption_slot(self):
+        t0, t1, t2 = Task(100, 0, 0), Task(100, 1, 1), Task(100, 0, 2)
+        CONTINUE HERE
