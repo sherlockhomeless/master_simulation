@@ -35,28 +35,6 @@ class TestProcessRunner(unittest.TestCase):
         self.new_plan = Plan.read_plan_from_file(self.test_plan_path + plan_name)
         self.pr = ProcessRunner.get_process_runner(self.new_plan)
 
-    def test_search_task_following(self):
-        plan_path = "plan_preempt.log"
-        self.set_up(plan_path)
-        next_id = self.pr.search_task_following(0)
-        self.assertEqual(1, next_id)
-        next_id = self.pr.search_task_following(7)
-        self.assertEqual(8, next_id)
-
-
-    def test_finishing_early_signal(self):
-        """
-        Sets Task up to finish to early and checks if a signal was sent to VRM
-        """
-        config.set_test_config()
-        t0 = Task(10000, 0, 0, length_real=100)
-        t1 = Task(100, 0, 1, length_real=500)
-        p = Plan.generate_custom_plan([t0, t1])
-        pr = ProcessRunner.get_process_runner(p)
-
-        pr.run_tick()
-        self.assertTrue(pr.job_sched.get_last_signal()[1] is t0)
-
     def test_assign_new(self):
         """
         Intended scenario: Task is late, unallocated slot is reassigned
@@ -86,14 +64,23 @@ class TestProcessRunner(unittest.TestCase):
         self.assertEqual(pr.task_list, [t3, t0, t2, t4])
 
     def test_find_slot_for_preemption(self):
-        tasks_ids = ((0,0), (1,1), (2,1), (3,0))
-        pr = create_test_pr(tasks_ids)
+        pr = create_test_pr(((0, 0), (1, 1), (2, 1), (3, 0)))
         slot = pr.find_slot_for_preemption(1)
         self.assertEqual(slot, 3)
 
-
     def test_preempt_current_task(self):
-        pass
+        pr = create_test_pr(((0, 0), (1, 1), (2, 1), (3, 0)))
+        preempted_task = pr.task_list[0]
+        pr.preempt_current_task()
+        tasks = pr.task_list
+
+        self.assertTrue(pr.cur_task.task_id == 1)
+        self.assertTrue(pr.task_list[2] is preempted_task)
+        self.assertTrue(preempted_task.was_preempted)
+        self.assertTrue(preempted_task.slot == tasks[-1])
+
+
+
 
 
 

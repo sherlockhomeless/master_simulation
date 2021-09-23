@@ -152,17 +152,17 @@ class ProcessRunner:
     def move_preempted_task(self, preempted_task: Task, insertion_index: int):
         """
         * Moves the preempted task (stack) into slot of insertion task
-        :return:
+        * Updates slots for all moved tasks
         """
         insertion_task = self.task_list[insertion_index]
         assert insertion_task.process_id == preempted_task.process_id
 
-        preempted_task.preempt(insertion_task)
-
-        tasks_to_move = list(filter(lambda t: t.slot is insertion_task, self.task_list[:insertion_index]))
+        tasks_to_move = list(filter(lambda t: t.process_id == preempted_task.process_id,
+                                    self.task_list[:insertion_index]))
         for task in tasks_to_move:
             self.task_list.insert(insertion_index, task)
             self.task_list.remove(task)
+            task.preempt(insertion_task)
 
     def preempt_current_task(self):
         """

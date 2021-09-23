@@ -101,11 +101,7 @@ class Task:
 
         self.times_preempted += 1
 
-        if self.slot is not self:
-            self.slot.preempt(other_task)
         self.slot = other_task.slot
-
-        other_task.times_preempted += 1
 
     def signal(self, sig: "PredictionFailure"):
         """
