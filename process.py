@@ -37,13 +37,14 @@ class Process:
         self.lateness = 0
 
         self.finished_process = False
+        self.lateness_neutralizer: int = 0
 
     def __len__(self):
         return self.number_tasks
 
     def update_lateness(self):
         lateness_process = sum([t.get_lateness_task() for t in self.tasks])
-        self.lateness = lateness_process
+        self.lateness = lateness_process + self.lateness_neutralizer
         self.instructions_executed += config.INS_PER_TICK
 
     def get_process_completion(self) -> float:

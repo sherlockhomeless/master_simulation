@@ -40,6 +40,7 @@ class ProcessRunner:
         self.tick_counter = 0
         self.stress = 0
         self.lateness_node: int = 0
+        self.lateness_neutralizer: int = 0
         self.length_plan = sum([sum(tasks_in_p.tasks) for tasks_in_p in self.processes])
 
         if config.LOG is True:
@@ -50,13 +51,14 @@ class ProcessRunner:
             self.tm2_pure = 0
 
     def run(self):
-        while not self.has_finished():
-            self.run_tick()
-
-            if config.LOG and self.cur_task.task_id != -1:
-                self.write_unified_log()
+        try:
+            while not self.has_finished():
+                self.run_tick()
+                if config.LOG and self.cur_task.task_id != -1:
+                    self.write_unified_log()
             config.logger.debug(f'[{self.tick_counter}]: current task {self.cur_task}')
-        config.logger.info(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
+        except PlanFinishedException:
+            config.logger.info(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
                            f'sent {len(self.job_sched.received_signals)} PFSs')
 
     def run_tick(self):
@@ -114,23 +116,23 @@ class ProcessRunner:
 
         if is_t2_triggered(cur_process, cur_task):
             self.signal_t2()
+            self.receive_updated_plan()
 
         self.tick_counter += 1
         self.stress -= 1 if self.stress > 0 else 0
 
     def handle_task_finish(self, cur_process, cur_task, cur_task_id):
         instructions_left_in_tick = cur_task.get_overdone_instructions()
-        if len(cur_process.tasks) == 0:
-            self.mark_process_finished()
         if cur_task.has_task_finished_early():
             tm2_task_triggered = thresholder.check_tm2_task(cur_task.instructions.instructions_retired_task,
                                                             self.thresholds['tm2_task'])
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
                 self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
-                config.logger.warn(f'{self.tick_counter}'
+                config.logger.warn(f'[{self.tick_counter}] '
                                    f't-2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
                                    f't-2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
+                self.receive_updated_plan()
         self.update_process_and_node_lateness()
         self.pick_next_task()
         config.logger.info(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
@@ -302,17 +304,6 @@ class ProcessRunner:
     def has_finished(self) -> bool:
         return False if len(self.task_list) > 0 else True
 
-    def mark_process_finished(self):
-        """
-        Marks the currently runnig process finished.
-        Updates Process_list, updates number of planned_instructions
-        :return:
-        """
-        assert len(self.cur_process.tasks) == 0
-        self.processes.remove(self.cur_process)
-        self.length_plan = sum([sum(process.tasks) for process in self.processes])
-        raise NotImplementedError
-
     def search_task_following(self, cur_id) -> int:
         """
         Returns the index of the task that is following the task with the given id according to the plan
@@ -322,27 +313,15 @@ class ProcessRunner:
                 return i+1
         return len(self.task_list)
 
-    def get_reference_point_for_task(self, task: Task) -> int:
-        """
-        Returns the time point the task given is compared to
-        :param task: the task
-        :return:
-        """
-        if task.is_running:
-            return task.end_time
-        else:
-            raise NotImplementedError
-
     def update_process_and_node_lateness(self):
         """
         Updates the lateness of the current process and of the node
 
         :return:
         """
-
         self.cur_process.update_lateness()
         lateness_node = sum([p.lateness for p in self.processes])
-        self.lateness_node = lateness_node
+        self.lateness_node = lateness_node + self.lateness_neutralizer
 
     def transgresses_t1(self) -> bool:
         """
@@ -364,7 +343,6 @@ class ProcessRunner:
     def finish_cur_task(self):
         assert self.cur_task.has_task_finished()
 
-
         self.finished_tasks.append(self.cur_task)
         self.task_list = self.task_list[1:]
         if len(self.task_list) == 0:
@@ -372,6 +350,15 @@ class ProcessRunner:
         else:
             self.cur_task = self.task_list[0]
             self.cur_process = self.processes[self.cur_task.process_id]
+
+    def receive_updated_plan(self):
+        """
+        One assumption made is that the job schedulers updates plans in such a way
+        that the signaled prediction failure is taken care of
+        :return:
+        """
+        self.lateness_neutralizer = -self.lateness_node
+        self.cur_process.lateness_neutralizer = -self.cur_process.lateness
 
     def write_unified_log(self) -> None:
         """
