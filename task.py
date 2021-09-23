@@ -122,7 +122,7 @@ class Task:
         return self.slot
 
     def __str__(self):
-        return f"{{'task_id': {self.task_id}, 'process': {self.process_id}, 'plan_len': " \
+        return f"'task_id': {self.task_id}, 'process': {self.process_id}, 'plan_len': " \
                f"{self.instructions.plan}, " \
                f"'real_len': {self.length_real}, 'lateness_task': {self.get_lateness_task()}}}"
 

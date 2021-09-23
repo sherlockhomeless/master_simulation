@@ -49,6 +49,7 @@ class TestTask(unittest.TestCase):
 
         self.assertEqual(t1.slot, t3)
         self.assertEqual(t2.slot, t3)
+        self.assertEqual(t3.slot, t3)
 
 
 
