@@ -36,18 +36,19 @@ class TestTask(unittest.TestCase):
 
     def test_share_slot(self):
         t1, t2, t3 = Task(1, 0, 0), Task(1, 0, 1), Task(1, 0, 2)
+        ins = 1
         # p = Plan.generate_custom_plan((t1, t2, t3))
         t1.preempt(t2)
-
-        self.assertTrue(len(t1.shares_slot_with) == 1)
-        self.assertTrue(t2.times_preempted is True)
-        self.assertTrue(t2.shares_slot_with == [])
+        t1.run(ins)
+        self.assertTrue(t1.slot == t2)
+        self.assertEqual(t1.instructions.instructions_retired_task, ins)
+        self.assertEqual(t1.instructions.instructions_retired_slot, 0)
+        self.assertEqual(t1.slot.instructions.instructions_retired_slot, ins)
 
         t1.preempt(t3)
 
-        self.assertTrue(len(t1.shares_slot_with) == 2)
-        self.assertTrue(len(t2.shares_slot_with) == 1)
-        self.assertTrue(len(t3.shares_slot_with) == 0)
+        self.assertEqual(t1.slot, t3)
+        self.assertEqual(t2.slot, t3)
 
     def test_run(self):
         config.set_test_config()

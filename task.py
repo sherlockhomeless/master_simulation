@@ -37,7 +37,7 @@ class Task:
         else:
             self.length_real = int(length_real)
 
-        self.instructions = InstructionTracker(instructions_planned=length_plan, instructions_real=length_real)
+        self.instructions = InstructionTracker(instructions_planned=length_plan, instructions_real=self.length_real)
 
     def run(self, ins):
         """
@@ -100,6 +100,8 @@ class Task:
 
         self.times_preempted += 1
 
+        if self.slot is not self:
+            self.slot.preempt(other_task)
         self.slot = other_task.slot
 
         other_task.times_preempted += 1
@@ -119,7 +121,8 @@ class Task:
         return self.slot
 
     def __str__(self):
-        return f"{{'task_id': {self.task_id}, 'process': {self.process_id}, 'plan_len': {self.length_plan}, " \
+        return f"{{'task_id': {self.task_id}, 'process': {self.process_id}, 'plan_len': " \
+               f"{self.instructions.instructions_planned}, " \
                f"'real_len': {self.length_real}, 'lateness_task': {self.get_lateness_task()}}}"
 
     def __repr__(self):
