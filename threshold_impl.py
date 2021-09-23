@@ -9,14 +9,17 @@ check*-functions return bools, where true indicates that threshold was transgres
 """
 
 
-def calc_t1(instructions_planned: int) -> int:
+def calc_t1(task: Task) -> int:
     """
     Calculates the t1 at which the currently running task is preempted and replaced by the next task in the plan.
     t1 is the minimum off two values, one of which represents an absolute boundary, the other a relative boundary:
 
         * max_global_deviation => is a global boundary that ensures that independant of the task details, a certain amount of ticks is not transgressed
-        * max_local_deviation => is a local, relative boundary relating to the details of the task TODO: AND PROCESS
+        * max_local_deviation => is a local, relative boundary relating to the details of the task
     """
+
+    cur_slot = task.get_current_slot_owner()
+    instructions_planned = cur_slot.length_plan_unchanged
 
     relative_t1 = int(instructions_planned * config.T1_SIGMA)
     t1_min = config.NO_PREEMPTION + instructions_planned

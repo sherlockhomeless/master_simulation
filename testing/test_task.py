@@ -31,7 +31,8 @@ class TestTask(unittest.TestCase):
 
         y = np.array(real_values)
         plt.bar(range(0, 200), y)
-        plt.show()
+        if False:
+            plt.show()
 
     def test_share_slot(self):
         t1, t2, t3 = Task(1, 0, 0), Task(1, 0, 1), Task(1, 0, 2)
@@ -39,7 +40,7 @@ class TestTask(unittest.TestCase):
         t1.preempt(t2)
 
         self.assertTrue(len(t1.shares_slot_with) == 1)
-        self.assertTrue(t2.shares_slot is True)
+        self.assertTrue(t2.times_preempted is True)
         self.assertTrue(t2.shares_slot_with == [])
 
         t1.preempt(t3)
@@ -62,6 +63,23 @@ class TestTask(unittest.TestCase):
         assert t0.instruction_counter.instructions_slot == 1100
         assert t1.instruction_counter.instructions_task == 2000
         assert t1.instruction_counter.instructions_slot == 2100
+
+    def test_preempt(self):
+        t0, t1, t2 = Task(100, 0, 0), Task(100, 0, 1), Task(100, 0, 2)
+        t0.preempt(t1)
+
+        self.assertTrue(t0.was_preempted is True)
+        self.assertTrue(t0.times_preempted == 0)
+        self.assertTrue(t1.times_preempted == 1)
+        self.assertTrue(t1.shares_slot_with == [t0])
+
+        t0, t1, t2 = Task(100, 0, 0), Task(100, 0, 1), Task(100, 0, 2)
+        t0.preempt(t1)
+        t0.preempt(t2)
+
+        self.assertTrue(t2.times_preempted == 2)
+        self.assertTrue(t2.shares_slot_with == [t0, t1])
+        self.assertTrue(t1.shares_slot_with == [t0])
 
 
 

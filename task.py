@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from random import randint
 import numpy as np
+
 from job_scheduler import PredictionFailureSignal
 from instruction_counter import InstructionTracker
 import config
@@ -14,15 +17,6 @@ class Task:
     def __init__(self, length_plan: int, process_id: int, task_id: int, length_real=None):
         assert type(length_plan) is int
 
-        assert type(length_plan) is int
-        self.length_plan_unchanged = length_plan
-        self.length_plan: int = length_plan  # decreases
-        self.instruction_counter = InstructionTracker()
-        if length_real is None:
-            possible_reals = np.random.normal(length_plan, length_plan/100 * config.TASK_SIGMA, 100)
-            self.length_real = int(possible_reals[randint(0, 99)])
-        else:
-            self.length_real = int(length_real)
         self.process_id = process_id
         self.task_id = task_id
 
@@ -31,15 +25,19 @@ class Task:
         self.finished_early = False
         self.finished_late = False
         self.finished_on_time = False
-        self.is_late = False
         self.was_preempted: int = 0  # counter for the amount of preemptions
         self.was_signaled: PredictionFailureSignal = None
 
-        # Reference to other tasks in which slot self was inserted too
-        # The order is (firstly inserted task, secondly inserted task,...)
-        self.shares_slot_with = []
-        self.shares_slot = False
-        self.t1_data = None
+        self.times_preempted: int = 0
+        self.slot: Task = self
+
+        if length_real is None:
+            possible_reals = np.random.normal(length_plan, length_plan/100 * config.TASK_SIGMA, 100)
+            self.length_real = int(possible_reals[randint(0, 99)])
+        else:
+            self.length_real = int(length_real)
+
+        self.instructions = InstructionTracker(instructions_planned=length_plan, instructions_real=length_real)
 
     def run(self, ins):
         """
@@ -48,33 +46,20 @@ class Task:
         """
         assert type(ins) is int
         # --- instructions counting ---
-        self.length_real -= ins
-        self.length_plan -= ins
-        self.instruction_counter.run_instructions_task(ins)
-
-        assert type(self.length_plan) is int
+        self.instructions.instructions_retired_task += ins
+        self.slot.instructions.instructions_retired_slot += ins
 
         # --- state checks ---
-        if self.length_real <= 0:
+        if self.instructions.has_finished():
             self.task_finished = True
-            if self.length_plan > 0 and self.was_preempted == 0:
+            if self.instructions.has_finished_early():
                 self.finished_early = True
-            elif self.length_plan < 0 or self.was_preempted > 0:
+            elif self.instructions.is_late():
                 self.finished_late = True
             else:
                 self.finished_on_time = True
         else:
             self.is_running = True
-            if self.length_plan <= 0:
-                self.is_late = True
-
-        # assign run instructions to slot
-        if not self.was_preempted:
-            self.instruction_counter.run_instructions_slot(ins)
-        else:
-            self.shares_slot_with[-1].instruction_counter.run_instructions_slot(ins)
-
-        assert self.length_real >= 0 or self.task_finished
 
     def has_task_finished(self):
         return self.task_finished
@@ -83,19 +68,10 @@ class Task:
         return self.finished_early
 
     def is_task_late(self):
-        return self.is_late
+        return self.instructions.is_late()
 
     def get_lateness_task(self) -> int:
-        """
-        Returns Lateness of Task:
-        If the task has finished or task is late: retired_instructions - length_plan
-        else: 0
-        :return:
-        """
-        if self.has_task_finished() or self.is_task_late():
-            return self.instruction_counter.instructions_task - self.length_plan_unchanged
-        else:
-            return 0
+        return self.instructions.get_lateness()
 
     def get_overdone_instructions(self):
         """
@@ -104,53 +80,29 @@ class Task:
         assert self.length_real <= 0
         return -self.length_real
 
-    def get_late_instructions(self, ins) -> int:
-        """
-        Helper method, that helps get the instructions a Task is late. Helps to decide if all instructions of a tick add to lateness or just some part of them
-        """
-        return -self.length_plan if self.turned_late else ins
-
-    def get_early_instructions(self, unused_instructions=0):
-        """
-        : param unused_instructions: int
-        Helper method that helps get keeps track of instructions, if a task finished early.
-        """
-        assert self.length_real < self.length_plan
-        assert self.finished_early is True
-        return -self.length_plan
-
-    def set_times(self, cur_time) -> int:
-        """
-        Sets the start and endtime of the current task, returns the planned endtime
-        """
-        self.start_time = cur_time
-        self.end_time = cur_time + self.length_plan
-        return self.end_time
-
     def get_instructions_cur_slot(self):
         """
         Returns the instructions that were run inside the slot the current task is assigned to
         :return:
         """
-        if not self.was_preempted:
-            return self.instruction_counter.instructions_slot
-        else:
-            return self.shares_slot_with[-1].instruction_counter.instructions_slot
+        return self.slot.instructions.instructions_retired_slot
 
-    def preempt(self, other_task: 'Task'):
+    def preempt(self, other_task: Task):
         """
         Self was preempted and now shares a slot with another Task, Informations on self have to updated to calculate t1 accordingly
         :param other_task: Task self was inserted before
         """
         assert other_task.process_id == self.process_id
         assert other_task is not self
-        self.is_running = False
-        # share information with other tasks that had to share their slot
-        if len(self.shares_slot_with) > 0 and self.shares_slot_with[0].shares_slot:
-            self.shares_slot_with[0].preempt(other_task)
 
-        self.shares_slot_with.append(other_task)
-        other_task.shares_slot = True
+        self.is_running = False
+        self.was_preempted = True
+
+        self.times_preempted += 1
+
+        self.slot = other_task.slot
+
+        other_task.times_preempted += 1
 
     def signal(self, sig: "PredictionFailure"):
         """
@@ -159,6 +111,13 @@ class Task:
         """
         self.was_signaled = sig
 
+    def get_current_slot_owner(self) -> Task:
+        """
+        The shares_slot_with list contains all the tasks in which slots self was inserted to
+        :return:
+        """
+        return self.slot
+
     def __str__(self):
         return f"{{'task_id': {self.task_id}, 'process': {self.process_id}, 'plan_len': {self.length_plan}, " \
                f"'real_len': {self.length_real}, 'lateness_task': {self.get_lateness_task()}}}"
@@ -166,12 +125,12 @@ class Task:
     def __repr__(self):
         return self.__str__()
 
-    def __add__(self, other):
+    def __add__(self, other: Task):
         assert type(other) is Task
-        return self.length_plan_unchanged + other.length_plan_unchanged
+        return self.instructions.instructions_planned + other.instructions.instructions_planned
 
-    def __radd__(self, other):
-        return other + self.length_plan_unchanged
+    def __radd__(self, other: Task):
+        return other + self.instructions.instructions_planned
 
     @staticmethod
     def get_placeholder_task() -> "Task":

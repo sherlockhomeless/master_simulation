@@ -149,33 +149,31 @@ class ProcessRunner:
                 return i
         raise PlanFinishedException
 
+    def move_preempted_task(self, preempted_task: Task, insertion_index: int):
+        """
+        * Moves the preempted tasks into slot of insertion task
+        * Sets shares_slot and shares_slot_with
+        :return:
+        """
+        insertion_task = self.task_list[insertion_index]
+        assert insertion_task.process_id == preempted_task.process_id
+
+        tasks_to_move = (preempted_task, *preempted_task.shares_slot_with)
+        for t in tasks_to_move:
+            self.task_list.remove(t)
+            self.task_list.insert(insertion_index - 1, t)
+        preempted_task.preempt(insertion_task)
+        preempted_task.times_preempted += 1
+        preempted_task.shares_slot_with += [insertion_task]
+
     def preempt_current_task(self):
         """
         preempts the currently running task, inserts the remaining part where the next task of the process would start and starts the next process
-        [CHECK] where to change things after preemption?
-        [TODO] Let process only run amount of time that other task has available
         """
-
-        def move_preempted_task(preempted_task: Task, insertion_slot: int):
-            """
-            Moves the preemted Tasks and tasks it shared a slot with into another plan slot indicated by next_slot
-            :param preempted_task: Task to move into other slot
-            :param insertion_slot: Index of Insertion Task in Plan
-            :return:
-            """
-            insertion_task = self.task_list[insertion_slot]
-            assert insertion_task.process_id == preempted_task.process_id
-
-            tasks_to_move = (preempted_task, *preempted_task.shares_slot_with)
-            for t in tasks_to_move:
-                self.task_list.remove(t)
-                self.task_list.insert(insertion_slot-1, t)
-            preempted_task.preempt(insertion_task)
 
         # --- convenience variables ---
         preempted_task = self.cur_task
         cur_task_id = self.cur_task.task_id
-        cur_process_id = self.cur_task.process_id
         next_task_index = self.search_task_following(cur_task_id)
         len_plan_start = len(self.task_list)
 
@@ -187,8 +185,7 @@ class ProcessRunner:
         config.logger.debug(f'[{self.tick_counter}] task {preempted_task} is inserted before {insertion_task}')
 
         # --- inserting preempted-task before slot ---
-        move_preempted_task(preempted_task, insertion_index)
-        preempted_task.shares_slot = True
+        self.move_preempted_task(preempted_task, insertion_index)
 
         # --- move plan forward and set timer ---
         self.cur_task = self.task_list[0]
@@ -272,16 +269,9 @@ class ProcessRunner:
         cur_process_id = cur_task.process_id
         cur_process = self.processes[cur_process_id]
 
-        # check if task was preempted and is in other slot
-        if cur_task.was_preempted != 0:
-            tasks_of_current_slot = cur_task.shares_slot_with[-1]
-            instructions_planned = tasks_of_current_slot.length_plan_unchanged
-        else:
-            instructions_planned = cur_task.length_plan_unchanged
-
         instructions_planned_task = self.cur_task.length_plan_unchanged
         # --- calculate t1 ---
-        t1 = thresholder.compute_t1(instructions_planned)
+        t1 = thresholder.compute_t1(cur_task)
         self.thresholds['t1'] = t1
         self.thresholds['t1_pure'] = t1 - instructions_planned_task
 
@@ -307,7 +297,6 @@ class ProcessRunner:
         tm2_node = thresholder.compute_tm2_node(self.thresholds['t2_node'])
         self.thresholds['tm2_node'] = tm2_node
 
-        assert self.thresholds['t1'] > instructions_planned
         assert self.thresholds['t1'] < self.thresholds['t2_task'] or self.cur_task.was_preempted
 
     def has_finished(self) -> bool:

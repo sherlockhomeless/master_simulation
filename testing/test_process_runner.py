@@ -4,6 +4,7 @@ import config
 from process_runner import ProcessRunner
 from plan import Plan
 from task import Task
+from process import Process
 import task
 
 
@@ -155,4 +156,9 @@ class TestProcessRunner(unittest.TestCase):
 
     def test_find_preemption_slot(self):
         t0, t1, t2 = Task(100, 0, 0), Task(100, 1, 1), Task(100, 0, 2)
-        CONTINUE HERE
+        p0, p1 = Process([t0, t2], 0), Process([t1], 0)
+        pl = Plan([t0, t1, t2], [p0, p1])
+        pr = ProcessRunner(pl)
+
+
+
