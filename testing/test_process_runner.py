@@ -7,8 +7,22 @@ from task import Task
 from process import Process
 import task
 
-
 task.ips = config.INS_PER_TICK
+
+def create_test_pr(list_ids: [(int, int),...]) -> ProcessRunner:
+    """
+    :param list_ids: Tuple of (task_id, process_id)
+    :return: ProcessRunner with Tasks for list_ids as plan
+    """
+    tasks = []
+    for id in list_ids:
+        tasks.append(Task(1, id[1], id[0]))
+    processes = []
+    num_processes = max([t[1] for t in list_ids])
+    for i in range(num_processes):
+        processes.append(Process(list(filter(lambda t: t.process_id == i, tasks)), 0))
+    p = Plan(tasks, processes)
+    return ProcessRunner(p)
 
 
 class TestProcessRunner(unittest.TestCase):
@@ -29,103 +43,6 @@ class TestProcessRunner(unittest.TestCase):
         next_id = self.pr.search_task_following(7)
         self.assertEqual(8, next_id)
 
-    def test_preemption(self):
-        """
-        Check if process preepption is working correctly
-        Task is set to be planned to finish at 1, buf finishes at some huge amount
-        -> should trigger at MIN_TICKS_OFF
-        -> check if it is pushed to next task of slot
-        """
-
-        # --- SETUP ---
-
-        t_00 = Task(100, 0, 0, length_real=300)
-        t_01 = Task(100, 1, 1, length_real=100)
-        t_02 = Task(100, 0, 2, length_real=200)
-        t_03 = Task(500, 1, 3, length_real=1000)
-        t_04 = Task(1000, 0, 4, length_real=1000)
-
-        config.INS_PER_TICK = 100
-        config.T1_MIN_TICKS_OFF = 1
-        config.update()
-
-        plan = Plan.generate_custom_plan([t_00, t_01, t_02, t_03, t_04])
-
-        self.pr = ProcessRunner.get_process_runner(plan)
-        start_task = self.pr.cur_task
-        other_task_of_p = self.pr.task_list[2]
-
-        # time 0-100
-        self.pr.run_tick()
-        cur_task = self.pr.cur_task
-        self.assertTrue(start_task.shares_slot_with == [])
-        self.assertTrue(cur_task is start_task)
-        self.assertTrue(self.pr.t1 == start_task.length_plan_unchanged + config.NO_PREEMPTION)
-
-        # time 100 - 200 -> should now have been preempted, 0 instructions run on next task
-        self.pr.run_tick()
-        cur_task = self.pr.cur_task
-        self.assertTrue(cur_task is not start_task)
-        self.assertTrue(cur_task.instruction_counter.instructions_task == 0)
-
-        # time 200 - 300 -> t01 should finish
-        self.pr.run_tick()
-        cur_task = self.pr.cur_task
-        self.assertTrue(cur_task is start_task)
-        self.assertTrue(start_task.shares_slot_with[0] is other_task_of_p)
-        self.assertTrue(len(self.pr.task_list) == 4)
-
-        # time 300-400, rerun first task & finished first task
-        self.pr.run_tick()
-        cur_task = self.pr.cur_task
-        self.assertTrue(cur_task is other_task_of_p)
-        self.assertTrue(self.pr.t1 == other_task_of_p.length_plan + config.NO_PREEMPTION)
-        self.assertTrue(start_task.instruction_counter.instructions_task == 300)
-        self.assertTrue(start_task.instruction_counter.instructions_slot == 200)
-        self.assertTrue(start_task.task_finished is True)
-        self.assertTrue(other_task_of_p.task_finished is False)
-        self.assertTrue(len(self.pr.task_list) == 3)
-
-        # time 400-500, t02 should start
-        self.pr.run_tick()
-        cur_task = self.pr.cur_task
-        self.assertTrue(cur_task is t_03)
-        self.assertTrue(other_task_of_p.shares_slot_with[0] is t_04)
-
-        all_instructions_run = sum([x.instruction_counter.instructions_task for x in (t_00, t_01, t_02, t_03)])
-        self.assertTrue(all_instructions_run == self.pr.tick_counter)
-
-    def test_multi_stack_preemption(self):
-        t0 = Task(100, 0, 0, length_real=500)
-        t1 = Task(100, 0, 1, length_real=500)
-        t2 = Task(500, 0, 2, length_real=500)
-
-        p = Plan.generate_custom_plan([t0, t1, t2])
-        config.INS_PER_TICK = 100
-        config.T1_MIN_TICKS_OFF = 1
-        config.LOG = False
-        config.update()
-        pr = ProcessRunner.get_process_runner(p)
-        # time 0-100, -> run t0
-        pr.run_tick()
-        cur_task = pr.cur_task
-        self.assertTrue(cur_task is t0)
-
-        # time 100-200 -> t0 is preempted
-        pr.run_tick()
-        cur_task = pr.cur_task
-        self.assertTrue(cur_task.shares_slot_with[0] == t1)
-
-        # t2 slot should start at 2x preemption limit => 400 with double stack
-        pr.run_tick()
-        pr.run_tick()
-
-        # should be preempted again here
-        self.assertTrue(t0.shares_slot_with == [t1, t2])
-        self.assertTrue(t1.shares_slot_with == [t2])
-        self.assertTrue(t0.get_instructions_cur_slot() == 0)
-        self.assertTrue(t0.instruction_counter.instructions_slot == 200)
-        self.assertTrue(t1.instruction_counter.instructions_slot == 200)
 
     def test_finishing_early_signal(self):
         """
@@ -168,7 +85,15 @@ class TestProcessRunner(unittest.TestCase):
         pr.move_preempted_task(t0, 3)
         self.assertEqual(pr.task_list, [t3, t0, t2, t4])
 
+    def test_find_slot_for_preemption(self):
+        tasks_ids = ((0,0), (1,1), (2,1), (3,0))
+        pr = create_test_pr(tasks_ids)
+        slot = pr.find_slot_for_preemption(1)
+        self.assertEqual(slot, 3)
 
+
+    def test_preempt_current_task(self):
+        pass
 
 
 

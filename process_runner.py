@@ -166,7 +166,9 @@ class ProcessRunner:
 
     def preempt_current_task(self):
         """
-        preempts the currently running task, inserts the remaining part where the next task of the process would start and starts the next process
+        * preempts the currently running task
+        * inserts the remaining part where the next task of the process would start
+        * prepares starting the next process
         """
 
         # --- convenience variables ---
@@ -217,7 +219,7 @@ class ProcessRunner:
             inserted_task.length_plan += free_slot.length_plan
 
         def idle():
-            self.tick_counter += self.task_list[0].length_plan
+            self.tick_counter += self.task_list[0].instructions.plan
             self.task_list = self.task_list[1:]
             try:
                 self.cur_task = self.task_list[0]
