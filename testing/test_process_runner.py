@@ -154,11 +154,22 @@ class TestProcessRunner(unittest.TestCase):
         self.assertEqual(len(pr.finished_tasks), 1)
         self.assertTrue(pr.finished_tasks[0].finished_late)
 
-    def test_find_preemption_slot(self):
+    def move_preempted(self):
         t0, t1, t2 = Task(100, 0, 0), Task(100, 1, 1), Task(100, 0, 2)
-        p0, p1 = Process([t0, t2], 0), Process([t1], 0)
-        pl = Plan([t0, t1, t2], [p0, p1])
+        t3, t4 = Task(100, 1, 3), Task(100, 0, 4)
+        p0, p1 = Process([t0, t2, t4], 0), Process([t1, t3], 0)
+        pl = Plan([t0, t1, t2, t3, t4], [p0, p1])
         pr = ProcessRunner(pl)
+
+        pr.move_preempted_task(t0, 2)
+        self.assertEqual(pr.task_list[:2], [t1, t0, t2])
+
+        pr.task_list = pr.task_list[1:]
+        pr.move_preempted_task(t0, 3)
+        self.assertEqual(pr.task_list[:2], [t3, t0, t2, t4])
+
+
+
 
 
 

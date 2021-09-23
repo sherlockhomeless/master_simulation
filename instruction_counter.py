@@ -3,8 +3,8 @@
 class InstructionTracker:
     def __init__(self, instructions_planned=0, instructions_retired_slot=0,
                  instructions_retired_task=0, instructions_real=0):
-        self.instructions_planned = instructions_planned
-        self.instructions_real = instructions_real
+        self.plan = instructions_planned
+        self.real = instructions_real
         self.instructions_retired_slot = instructions_retired_slot
         self.instructions_retired_task = instructions_retired_task
 
@@ -15,20 +15,20 @@ class InstructionTracker:
         self.instructions_retired_slot += instructions
 
     def has_finished(self) -> bool:
-        return self.instructions_retired_task >= self.instructions_real
+        return self.instructions_retired_task >= self.real
 
     def has_finished_early(self) -> bool:
-        return self.has_finished() and self.instructions_retired_task < self.instructions_planned
+        return self.has_finished() and self.instructions_retired_task < self.plan
 
     def is_late(self) -> bool:
-        return self.instructions_retired_task > self.instructions_planned
+        return self.instructions_retired_task > self.plan
 
     def get_lateness(self):
         if self.has_finished() or self.is_late():
-            return self.instructions_retired_task - self.instructions_planned
+            return self.instructions_retired_task - self.plan
         else:
             return 0
 
     def __repr__(self):
-        return f'( plan: {self.instructions_planned}, real: {self.instructions_real},' \
+        return f'( plan: {self.plan}, real: {self.real},' \
                f' retired: {self.instructions_retired_task})'

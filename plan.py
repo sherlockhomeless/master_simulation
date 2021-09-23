@@ -361,7 +361,8 @@ class Plan:
 
         tasks_s = ''
         for task in plan.task_list:
-            tasks_s += f'{task.process_id},{task.task_id},{task.length_plan},{task.length_real};'
+            tasks_s += f'{task.process_id},{task.task_id},' \
+                       f'{task.instructions.plan},{task.instructions.real};'
 
         plan_s = meta + ";;" + tasks_s + '\n'
         plan_s_byte = plan_s.encode('ascii')
@@ -376,7 +377,8 @@ class Plan:
             f.write('pid - tid - len_plan - len-real\n')
             for task in plan.task_list:
                 f.write(
-                    f'{task.process_id} {task.task_id} {task.length_plan} {task.length_real}\n')
+                    f'{task.process_id} {task.task_id}'
+                    f' {task.instructions.plan} {task.instructions.real}\n')
             f.write('\n')
 
     def __len__(self):

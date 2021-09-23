@@ -26,11 +26,11 @@ class JobScheduler:
 
     @staticmethod
     def reschedule_simple(tasks, shrink=False) -> []:
-        old = list([x.length_plan for x in tasks])
+        old = list([x.instructions.plan for x in tasks])
         stretch = config.PLAN_STRETCH_FACTOR if not shrink else -config.PLAN_STRETCH_FACTOR
         for t in tasks:
-            plan_delta = int(t.length_plan_unchanged * stretch)
-            t.length_plan += plan_delta
+            plan_delta = int(t.instructions.plan * stretch)
+            t.instructions.plan += plan_delta
         return tasks
 
     def signal_t2(self, time_stamp, signaling_task, tasks):
@@ -54,12 +54,12 @@ class JobScheduler:
         :param signaling_task: Task which caused signal
         :return:
         """
-        length_original = signaling_task.length_plan
+        length_original = signaling_task.instructions.plan
         self.received_signals.append((time_stamp, signaling_task, "t_m2"))
         cur_task_pid = signaling_task.process_id
         all_tasks_to_stretch = list(filter(lambda task: task.process_id == cur_task_pid, tasks))
         JobScheduler.reschedule_simple(all_tasks_to_stretch, shrink=True)
-        assert length_original != tasks[0].length_plan
+        assert length_original != tasks[0].instructions.plan
         return tasks
 
     def get_last_signal(self):

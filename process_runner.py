@@ -72,7 +72,7 @@ class ProcessRunner:
                 print('stop here')
 
         def is_t2_triggered(cur_process, cur_task) -> bool:
-            t2_task_triggered = thresholder.check_t2_task(cur_task.instruction_counter.instructions_task,
+            t2_task_triggered = thresholder.check_t2_task(cur_task.instructions.plan,
                                                           self.thresholds['t2_task'])
             t2_process_triggered = thresholder.check_t2_process(cur_process.lateness, self.thresholds['t2_process'])
             t2_node_triggered = thresholder.check_t2_node(self.lateness_node, self.thresholds['t2_node'])
@@ -123,7 +123,7 @@ class ProcessRunner:
         if len(cur_process.tasks) == 0:
             self.mark_process_finished()
         if cur_task.has_task_finished_early():
-            tm2_task_triggered = thresholder.check_tm2_task(cur_task.instruction_counter.instructions_task,
+            tm2_task_triggered = thresholder.check_tm2_task(cur_task.instructions.instructions_retired_task,
                                                             self.thresholds['tm2_task'])
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
@@ -158,13 +158,9 @@ class ProcessRunner:
         insertion_task = self.task_list[insertion_index]
         assert insertion_task.process_id == preempted_task.process_id
 
-        tasks_to_move = (preempted_task, *preempted_task.shares_slot_with)
-        for t in tasks_to_move:
-            self.task_list.remove(t)
-            self.task_list.insert(insertion_index - 1, t)
+        # remove preempted task from current task list
         preempted_task.preempt(insertion_task)
-        preempted_task.times_preempted += 1
-        preempted_task.shares_slot_with += [insertion_task]
+        self.task_list.insert(insertion_index, preempted_task)
 
     def preempt_current_task(self):
         """
@@ -269,7 +265,7 @@ class ProcessRunner:
         cur_process_id = cur_task.process_id
         cur_process = self.processes[cur_process_id]
 
-        instructions_planned_task = self.cur_task.length_plan_unchanged
+        instructions_planned_task = self.cur_task.instructions.plan
         # --- calculate t1 ---
         t1 = thresholder.compute_t1(cur_task)
         self.thresholds['t1'] = t1
@@ -282,7 +278,7 @@ class ProcessRunner:
         t2_process = thresholder.compute_t2_process(cur_process, self.stress, self.finished_tasks + [cur_task])
 
         self.thresholds['t2_process'] = t2_process
-        planned_length_all_finished_tasks = sum(list([t.length_plan_unchanged for t in self.finished_tasks]))
+        planned_length_all_finished_tasks = sum(list([t.instructions.plan for t in self.finished_tasks]))
         length_first_10 = sum(self.task_list[:10])
         ins_planned = length_first_10 if planned_length_all_finished_tasks < length_first_10 else planned_length_all_finished_tasks
         t2_node = thresholder.compute_t2_node(ins_planned, self.stress)
@@ -396,8 +392,8 @@ class ProcessRunner:
         tm2_node = self.thresholds['tm2_node']
 
         cur_task_id = self.cur_task.task_id
-        cur_task_len_unchanged = self.cur_task.length_plan_unchanged
-        cur_task_len_plan = int(self.cur_task.length_plan)
+        cur_task_len_unchanged = self.cur_task.instructions.plan
+        cur_task_len_plan = int(self.cur_task.instructions.instructions_retired_task)
         cur_task_len_real = self.cur_task.length_real
         lateness_task = self.cur_task.get_lateness_task()
         preemptions = self.cur_task.was_preempted

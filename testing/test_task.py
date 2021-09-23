@@ -34,7 +34,7 @@ class TestTask(unittest.TestCase):
         if False:
             plt.show()
 
-    def test_share_slot(self):
+    def test_preempt(self):
         t1, t2, t3 = Task(1, 0, 0), Task(1, 0, 1), Task(1, 0, 2)
         ins = 1
         # p = Plan.generate_custom_plan((t1, t2, t3))
@@ -49,39 +49,6 @@ class TestTask(unittest.TestCase):
 
         self.assertEqual(t1.slot, t3)
         self.assertEqual(t2.slot, t3)
-
-    def test_run(self):
-        config.set_test_config()
-        config.T1_MIN_TICKS_OFF = 1
-        config.T1_MAX_VALUE = 100
-        t0 = Task(1000, 0, 0, length_real=1200)
-        t1 = Task(2000, 0, 1, length_real=2000)
-        p = Plan.generate_custom_plan([t0, t1])
-        pr = ProcessRunner(p)
-        pr.run()
-
-        assert t0.instruction_counter.instructions_task == 1200
-        assert t0.instruction_counter.instructions_slot == 1100
-        assert t1.instruction_counter.instructions_task == 2000
-        assert t1.instruction_counter.instructions_slot == 2100
-
-    def test_preempt(self):
-        t0, t1, t2 = Task(100, 0, 0), Task(100, 0, 1), Task(100, 0, 2)
-        t0.preempt(t1)
-
-        self.assertTrue(t0.was_preempted is True)
-        self.assertTrue(t0.times_preempted == 0)
-        self.assertTrue(t1.times_preempted == 1)
-        self.assertTrue(t1.shares_slot_with == [t0])
-
-        t0, t1, t2 = Task(100, 0, 0), Task(100, 0, 1), Task(100, 0, 2)
-        t0.preempt(t1)
-        t0.preempt(t2)
-
-        self.assertTrue(t2.times_preempted == 2)
-        self.assertTrue(t2.shares_slot_with == [t0, t1])
-        self.assertTrue(t1.shares_slot_with == [t0])
-
 
 
 

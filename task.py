@@ -75,10 +75,11 @@ class Task:
 
     def get_overdone_instructions(self):
         """
-        If a task has finished, it has to return the amount of instructions it has overdone so those can be added to another task
+        If a task has finished, it has to return the amount of instructions it
+         has overdone so those can be added to another task
         """
-        assert self.length_real <= 0
-        return -self.length_real
+        assert self.instructions.instructions_retired_task >= self.instructions.real
+        return self.instructions.real - self.instructions.instructions_retired_task
 
     def get_instructions_cur_slot(self):
         """
@@ -89,7 +90,7 @@ class Task:
 
     def preempt(self, other_task: Task):
         """
-        Self was preempted and now shares a slot with another Task, Informations on self have to updated to calculate t1 accordingly
+        * sets the new next slot for self and all other tasks that self was inserted before
         :param other_task: Task self was inserted before
         """
         assert other_task.process_id == self.process_id
@@ -122,7 +123,7 @@ class Task:
 
     def __str__(self):
         return f"{{'task_id': {self.task_id}, 'process': {self.process_id}, 'plan_len': " \
-               f"{self.instructions.instructions_planned}, " \
+               f"{self.instructions.plan}, " \
                f"'real_len': {self.length_real}, 'lateness_task': {self.get_lateness_task()}}}"
 
     def __repr__(self):
@@ -130,10 +131,10 @@ class Task:
 
     def __add__(self, other: Task):
         assert type(other) is Task
-        return self.instructions.instructions_planned + other.instructions.instructions_planned
+        return self.instructions.plan + other.instructions.plan
 
     def __radd__(self, other: Task):
-        return other + self.instructions.instructions_planned
+        return other + self.instructions.plan
 
     @staticmethod
     def get_placeholder_task() -> "Task":

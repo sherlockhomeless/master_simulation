@@ -19,7 +19,7 @@ def calc_t1(task: Task) -> int:
     """
 
     cur_slot = task.get_current_slot_owner()
-    instructions_planned = cur_slot.length_plan_unchanged
+    instructions_planned = cur_slot.instructions.plan
 
     relative_t1 = int(instructions_planned * config.T1_SIGMA)
     t1_min = config.NO_PREEMPTION + instructions_planned
