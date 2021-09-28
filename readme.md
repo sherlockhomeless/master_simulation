@@ -57,3 +57,5 @@ Since this format is not easy for humans to read, the visualization contains a p
 The following visualization depicts the development of the process lateness compared to `t2_process`:
 
 ![visualization t2_process and process process lateness](markdown/t2_process.png)
+
+Since the test scenario only included only short running processes with a bias towards lateness, the value of `t2_process` is that of `config.T2_PROCESS_MINIMUM`. Near timer tick 700, the process transgresses on `t2_process` and causes a rescheduling. Due to the stress system, `t2_process` is heavily increased, but slowly returns to its base value.
