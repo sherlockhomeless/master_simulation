@@ -4,3 +4,4 @@ __pycache__
 *.swap
 .idea
 pics
+testing/**temp**
