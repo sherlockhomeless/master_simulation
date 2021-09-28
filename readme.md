@@ -52,3 +52,10 @@ The simulation also creates a per-tick log in `logs/unified_tick.log` that conta
     ...
 
 Since this format is not easy for humans to read, the visualization contains a parser, that creates an object of **TickEvent** for each line. The class is defined in **log_parser.py**. Looking at ticks with the help of a debugger might be more convenient than looking at the log-file directly. 
+
+
+The following visualization depicts the development of the process lateness compared to `t2_process`:
+
+![visualization t2_process and process process lateness](markdown/t2_process.png)
+
+Since the test scenario only included only short running processes with a bias towards lateness, the value of `t2_process` is that of `config.T2_PROCESS_MINIMUM`. Near timer tick 700, the process transgresses on `t2_process` and causes a rescheduling. Due to the stress system, `t2_process` is heavily increased, but slowly returns to its base value.
