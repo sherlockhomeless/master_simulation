@@ -79,11 +79,3 @@ class TestProcessRunner(unittest.TestCase):
         self.assertTrue(preempted_task.was_preempted)
         self.assertTrue(preempted_task.slot == tasks[-1])
 
-    def test_counter
-
-
-
-
-
-
-

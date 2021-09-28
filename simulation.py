@@ -15,15 +15,16 @@ import helper
 def run_sim(saved_plan=None):
     # if simulation should not run saved plan, create new
     if saved_plan is None:
-        new_plan = Plan.generate_plan(file_path=config.WRITE_PLAN)
+        p = Plan.generate_plan(file_path=config.WRITE_PLAN)
+        Plan.write_plan_to_file(p, config.WRITE_PLAN)
     else:
-        new_plan = Plan.read_plan_from_file(saved_plan)
+        p = Plan.read_plan_from_file(saved_plan)
 
-    #new_plan = helper.apply_stretch_to_process(new_plan, 0, 1.1)
-    runner = ProcessRunner(new_plan)
-    Plan.write_plan_to_file(new_plan, config.WRITE_PLAN)
+    stretch: float = 1.0  # no stretch
+    p = helper.apply_stretch_to_process(p, stretch)  # If wanted, pid can be passed as kwarg
+    runner = ProcessRunner(p)
 
-    config.logger.info(f'Running simulation {new_plan}')
+    config.logger.info(f'Running simulation {p}')
     if not config.JUST_WRITE_PLAN:
         runner.run()
 

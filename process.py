@@ -51,9 +51,12 @@ class Process:
         """
         :return: process completion, 1 represents 100%
         """
-
         completion = self.instructions_planned / self.instructions_executed
         return min(completion, 1.0)
+
+    def set_neutralizer(self):
+        self.update_lateness()
+        self.lateness_neutralizer = -self.lateness
 
     @staticmethod
     def _generate_random_process(tasks=[], num_tasks=10, pid=0):

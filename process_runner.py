@@ -321,7 +321,7 @@ class ProcessRunner:
         """
         self.cur_process.update_lateness()
         lateness_node = sum([p.lateness for p in self.processes])
-        self.lateness_node = lateness_node + self.lateness_neutralizer
+        self.lateness_node = lateness_node
 
     def transgresses_t1(self) -> bool:
         """
@@ -357,8 +357,8 @@ class ProcessRunner:
         that the signaled prediction failure is taken care of
         :return:
         """
-        self.lateness_neutralizer = -self.lateness_node
-        self.cur_process.lateness_neutralizer = -self.cur_process.lateness
+        self.cur_process.set_neutralizer()
+        self.cur_process.update_lateness()
 
     def write_unified_log(self) -> None:
         """

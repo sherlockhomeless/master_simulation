@@ -15,7 +15,7 @@ def get_process_with_pid(pid: int, process_list: List[process.Process]) -> proce
     return list(filter(lambda p: pid == p.process_id, process_list))[0]
 
 
-def apply_stretch_to_process(p: plan.Plan, pid: int, stretch: float):
+def apply_stretch_to_process(p: plan.Plan, stretch: float, pid: int = 0):
     for t in p:
         if t.process_id == pid:
             t.length_real = int(stretch * t.length_real)

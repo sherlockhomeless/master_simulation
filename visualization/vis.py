@@ -5,7 +5,6 @@ from typing import List
 import matplotlib.pyplot as plt
 
 from log_parser import TickEvent, LogParser
-
 import sys
 sys.path.insert(0, '..')
 
@@ -131,9 +130,9 @@ def visualize_plan_real_deviation(p: "Plan", figure_name: str = ""):
     task_count = [x for x in range(len(p.task_list))]
 
     for t in p.task_list:
-        plan_length.append(t.length_plan)
-        real_length.append(t.length_real)
-        dif_length.append((t.length_real - t.length_plan)/config.INS_PER_TICK)
+        plan_length.append(t.instructions.plan)
+        real_length.append(t.instructions.real)
+        dif_length.append((t.instructions.real - t.instructions.plan)/config.INS_PER_TICK)
 
     plt.plot(task_count, dif_length, label='real - length')
 
@@ -159,12 +158,12 @@ def visualize_t1(logs: List[TickEvent]):
 
 def visualize_node(logs):
     x_axis = range(len(logs))
-    plt.plot(x_axis, [logs.lateness_node[1]/config.INS_PER_TICK] * len(logs), label='node lateness')
-    plt.plot(x_axis, [logs.tm2_node[1]/config.INS_PER_TICK] * len(logs), label='tm2_node')
-    plt.plot(x_axis, [logs.t2_node[1]/config.INS_PER_TICK] * len(logs), label='t2_node')
+
+    plt.plot(x_axis, [log.lateness_node[1]/config.INS_PER_TICK for log in logs], label='node lateness')
+    plt.plot(x_axis, [log.tm2_node[1]/config.INS_PER_TICK for log in logs], label='tm2_node')
+    plt.plot(x_axis, [log.t2_node[1]/config.INS_PER_TICK for log in logs], label='t2_node')
     plt.legend()
     save_fig('node_lateness')
-
 
 
 def save_fig(filename):
