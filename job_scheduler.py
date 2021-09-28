@@ -52,7 +52,6 @@ class JobScheduler:
         Signals T-2
         :param time_stamp: current time at which t-2 was signaled
         :param signaling_task: Task which caused signal
-        :return:
         """
         length_original = signaling_task.instructions.plan
         self.received_signals.append((time_stamp, signaling_task, "t_m2"))

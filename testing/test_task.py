@@ -44,12 +44,13 @@ class TestTask(unittest.TestCase):
         self.assertEqual(t1.instructions.instructions_retired_task, ins)
         self.assertEqual(t1.instructions.instructions_retired_slot, 0)
         self.assertEqual(t1.slot.instructions.instructions_retired_slot, ins)
-
+        self.assertEqual(t1.times_preempted, 1)
         t1.preempt(t3)
 
         self.assertEqual(t1.slot, t3)
         self.assertEqual(t2.slot, t3)
         self.assertEqual(t3.slot, t3)
+        self.assertEqual(t1.times_preempted, 2)
 
 
 

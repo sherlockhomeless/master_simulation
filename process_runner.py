@@ -81,10 +81,10 @@ class ProcessRunner:
             t2_preemptions_triggered = thresholder.check_t2_preemptions(cur_task)
             trigger = t2_task_triggered or t2_process_triggered or t2_node_triggered or t2_preemptions_triggered
             if trigger:
-                config.logger.warn(f'[{self.tick_counter}] task: {t2_task_triggered} ({self.cur_task.get_lateness_task()})/{self.thresholds["t2_task"]},'
-                      f' process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
-                      f'node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
-                      f'preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
+                config.logger.warn(f'[{self.tick_counter}] t2_task: {t2_task_triggered} ({self.cur_task.get_lateness_task()})/{self.thresholds["t2_task"]},'
+                      f' t2_process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
+                      f' t2_node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
+                      f' t2_preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
             return trigger
         hold_at_tick(12030237415)
         self.update_thresholds()
@@ -130,8 +130,8 @@ class ProcessRunner:
             if tm2_task_triggered or tm2_node_triggered:
                 self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
                 config.logger.warn(f'[{self.tick_counter}] '
-                                   f't-2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
-                                   f't-2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
+                                   f'tm2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
+                                   f'tm2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
                 self.receive_updated_plan()
         self.update_process_and_node_lateness()
         self.pick_next_task()
@@ -329,7 +329,7 @@ class ProcessRunner:
         determines if cur_task_ins is located such that t1 is transgressed
         """
         t1 = -1 * self.thresholds[self.cur_task.process_id].t1
-        cur_lateness = self.cur_task.length_plan
+        cur_lateness = self.cur_task.instructions.plan
         return True if t1 > cur_lateness else False
 
     def signal_t2(self):
@@ -402,46 +402,6 @@ class ProcessRunner:
         line_rest = f'process_id:{cur_process_id};lateness_process:{lateness_process};lateness_node:{lateness}'
         log_string = line_thresholds + line_task + line_rest + '\n'
         self.log_unified.write(log_string)
-
-    def write_thresh_log(self):
-        """
-        Writes the current state of the thresholds to a file
-        :return:
-        """
-        # format: cur_jobid cur_process_id cur_task_id cur_t1 cur_t2 cur_-t2
-
-        assert self.t1_pure > 0
-        assert self.t2_task_pure > 0
-        assert self.tm2_task_pure < 0
-
-        if self.cur_task.task_id != -1:
-            self.log_thresh.write(
-                f'{self.tick_counter} {self.cur_task.task_id} {self.t1} {self.t2} {self.t_m2}\n')
-            self.log_thresh_pure.write(
-                f'{self.tick_counter} {self.cur_task.task_id} {self.t1_pure} {self.t2_pure} {self.tm2_pure}\n')
-
-        else:
-            self.log_thresh.write(f'-1 0 0 0\n')  # empty space
-
-    def write_tick_log(self):
-        """
-        Writes Task-Information and the current time to File
-        FORMAT: Time [TASK]
-        :return: None
-        """
-        self.tick_log.write(
-            f'{self.tick_counter} {str(self.cur_task)}\n')
-
-    def __del__(self):
-        if config.LOG is False:
-            return
-        try:
-            self.tick_log.close()
-            self.log_thresh.close()
-            self.log_thresh_pure.close()
-            self.log_unified.close()
-        except AttributeError:
-            pass
 
     @staticmethod
     def get_process_runner(new_plan):

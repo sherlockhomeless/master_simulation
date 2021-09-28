@@ -69,7 +69,6 @@ class Plan:
 
         buffer_list = Plan.generate_buffer_list(tasks_per_process, (min_buffer, max_buffer))
 
-        deadline_list = Plan.generate_deadlines(tasks_for_plan, buffer_list)
         processes = []
         # create process instances
         for i in range(num_processes):
@@ -77,7 +76,6 @@ class Plan:
 
         tasks_for_plan = fix_ids(tasks_for_plan)
 
-        assert len(deadline_list) == len(buffer_list)
         assert sum_all_tasks_of_processes + num_free_time_tasks == len(tasks_for_plan)
 
         plan = Plan(tasks_for_plan, processes)
@@ -177,7 +175,7 @@ class Plan:
         time = 0
 
         for task in plan_task_list:
-            time += task.length_plan
+            time += task.instructions.length_plan
             if task.process_id != -1:
                 deadlines[task.process_id] = time
 
