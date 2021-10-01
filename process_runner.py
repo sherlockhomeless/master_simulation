@@ -32,7 +32,7 @@ class ProcessRunner:
         self.cur_task = self.task_list[0]
         self.cur_process = self.processes[self.cur_task.process_id]
         self.cur_process_id = self.cur_process.process_id
-        self.job_sched = JobScheduler(self.task_list)
+        self.job_scheduler = JobScheduler(self.task_list)
         self.finished_tasks: List[Task] = []
 
         self.thresholds: Dict = {}
@@ -51,29 +51,33 @@ class ProcessRunner:
             self.tm2_pure = 0
 
     def run(self):
+        """
+        Runs the plan given to the process runner until it finishes
+        """
         try:
             while not self.has_finished():
                 self.run_tick()
+                config.logger.debug(f'[{self.tick_counter}]: current task {self.cur_task}')
+
                 if config.LOG and self.cur_task.task_id != -1:
                     self.write_unified_log()
-            config.logger.debug(f'[{self.tick_counter}]: current task {self.cur_task}')
         except PlanFinishedException:
             config.logger.info(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
-                           f'sent {len(self.job_sched.received_signals)} PFSs')
+                           f'sent {len(self.job_scheduler.received_signals)} PFSs')
 
     def run_tick(self):
         """
         Simulates the equivalent of an timer tick. Updates the Threshold and executes the appropriate actions
         if a threshold is transgressed
         """
-        def hold_at_tick(tick_count: int):
-            """
-            Helper function to stop execution at given tick-count
-            """
-            if self.tick_counter == tick_count:
-                print('stop here')
-
         def is_t2_triggered(cur_process, cur_task) -> bool:
+            """
+            Checks the current state of the node against its thresholds
+            :param cur_process:
+            :param cur_task:
+            :return: returns if a threshold was transgressed or not
+            """
+
             t2_task_triggered = thresholder.check_t2_task(cur_task.instructions.plan,
                                                           self.thresholds['t2_task'])
             t2_process_triggered = thresholder.check_t2_process(cur_process.lateness, self.thresholds['t2_process'])
@@ -85,7 +89,16 @@ class ProcessRunner:
                       f' t2_process: {t2_process_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]}), '
                       f' t2_node: {t2_node_triggered} ({self.lateness_node}/{self.thresholds["t2_node"]}), '
                       f' t2_preemptions: {t2_preemptions_triggered} ({self.cur_task.was_preempted}/{config.T2_MAX_PREEMPTIONS})')
+
             return trigger
+
+        def hold_at_tick(tick_count: int):
+            """
+            Debugging function to stop execution at given tick-count
+            """
+            if self.tick_counter == tick_count:
+                print('stop here')
+
         hold_at_tick(12030237415)
         self.update_thresholds()
 
@@ -100,7 +113,7 @@ class ProcessRunner:
         # --- Task has finished ---
         if cur_task.has_task_finished():
             try:
-                self.handle_task_finish(cur_process, cur_task, cur_task_id)
+                self.handle_task_finish(cur_task, cur_task_id)
             except helper.PlanFinishedException:
                 assert len(self.task_list) == 0
                 return
@@ -121,18 +134,30 @@ class ProcessRunner:
         self.tick_counter += 1
         self.stress -= 1 if self.stress > 0 else 0
 
-    def handle_task_finish(self, cur_process, cur_task, cur_task_id):
+    def handle_task_finish(self, cur_task, cur_task_id):
+        """
+        Handles the finishing of a task:
+            * corrects simulation for overdone instructions
+            * checks if tm2 thresholds have been trangressed
+            * updates latenesses
+            * picks next task and allocates overdone instructions
+        :param cur_task: tasks that has just finished
+        :param cur_task_id: task-id of finished task
+        """
+
         instructions_left_in_tick = cur_task.get_overdone_instructions()
+        # check for tm2-transgression
         if cur_task.has_task_finished_early():
             tm2_task_triggered = thresholder.check_tm2_task(cur_task.instructions.instructions_retired_task,
                                                             self.thresholds['tm2_task'])
             tm2_node_triggered = thresholder.check_tm2_node(self.lateness_node, self.thresholds['tm2_node'], self.stress)
             if tm2_task_triggered or tm2_node_triggered:
-                self.task_list = self.job_sched.signal_t_m2(self.tick_counter, cur_task, self.task_list)
+                self.task_list = self.job_scheduler.signal_t_m2(self.tick_counter, cur_task, self.task_list)
                 config.logger.warn(f'[{self.tick_counter}] '
                                    f'tm2_task: {tm2_task_triggered} ({self.cur_task.get_lateness_task()}/{self.thresholds["t2_task"]},'
                                    f'tm2_node: {tm2_node_triggered} ({self.cur_process.lateness}/{self.thresholds["t2_process"]})')
                 self.receive_updated_plan()
+
         self.update_process_and_node_lateness()
         self.pick_next_task()
         config.logger.info(f'[{self.tick_counter}] finished Task {cur_task_id}; started Task {self.cur_task.task_id}')
@@ -140,6 +165,7 @@ class ProcessRunner:
 
     def find_slot_for_preemption(self, start_search_index, assign_free_slots=False):
         """
+        Finds a slot for task the cur_task to be inserted to
         :param start_search_index: start searching from here
         :param assign_free_slots: Enable/Disable looking for free slots
         :return: Index of the task slot found in the plan
@@ -209,18 +235,28 @@ class ProcessRunner:
         Picks the next task
         ! shortens the plan
         """
-        def assign_task_to_free_slot(inserted_task: Task, task_list: List[Task]) -> List[Task]:
+        def assign_task_to_free_slot(preempted_task: Task, task_list: List[Task]):
+            """
+            Assings preempted task to idle time slot
+            :param preempted_task: preempted task
+            :param task_list:
+            :return:
+            """
             free_slot: Task = task_list[0]
             assert free_slot == -1
-            assert inserted_task.was_preempted > 0
+            assert preempted_task.was_preempted > 0
 
             # remove from original slot & insert to unallocated slot
-            task_list.remove(inserted_task)
-            task_list[0] = inserted_task
+            task_list.remove(preempted_task)
+            task_list[0] = preempted_task
 
-            inserted_task.length_plan += free_slot.length_plan
+            preempted_task.instructions.plan += free_slot.instructions.plan
+            self.task_list = task_list
 
         def idle():
+            """
+            If no task can be inserted into idle time slot, CPU has to idle
+            """
             self.tick_counter += self.task_list[0].instructions.plan
             self.task_list = self.task_list[1:]
             try:
@@ -316,7 +352,6 @@ class ProcessRunner:
     def update_process_and_node_lateness(self):
         """
         Updates the lateness of the current process and of the node
-
         :return:
         """
         self.cur_process.update_lateness()
@@ -338,7 +373,7 @@ class ProcessRunner:
         In this simulation this step is kept very simple
         """
         self.stress = config.T2_STRESS_RESET
-        self.job_sched.signal_t2(self.tick_counter, self.cur_task, self.task_list)
+        self.job_scheduler.signal_t2(self.tick_counter, self.cur_task, self.task_list)
 
     def finish_cur_task(self):
         assert self.cur_task.has_task_finished()

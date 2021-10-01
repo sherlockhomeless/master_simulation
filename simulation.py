@@ -20,8 +20,8 @@ def run_sim(saved_plan=None):
         p = Plan.read_plan_from_file(saved_plan)
 
     # Stretching plan or process for testing purposes, pid can be given to apply_stretch to only stretch one process
-    stretch: float = 1.0  # no stretch
-    p = helper.apply_stretch_to_process(p, stretch)
+    stretch: float = 2.0  # no stretch
+    p = helper.apply_stretch_real_length(p, stretch)
     runner = ProcessRunner(p)
 
     config.logger.info(f'Running simulation {p}')

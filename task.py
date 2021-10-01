@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from random import randint
-from typing import Union
+from typing import Optional
 import numpy as np
 
 from job_scheduler import PredictionFailureSignal
@@ -27,7 +27,7 @@ class Task:
         self.finished_late = False
         self.finished_on_time = False
         self.was_preempted: int = 0  # counter for the amount of preemptions
-        self.was_signaled: Union[PredictionFailureSignal, None] = None
+        self.was_signaled: Optional[PredictionFailureSignal] = None
 
         self.times_preempted: int = 0
         self.slot: Task = self
