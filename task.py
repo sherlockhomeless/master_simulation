@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from random import randint
+from typing import Union
 import numpy as np
 
 from job_scheduler import PredictionFailureSignal
@@ -26,7 +27,7 @@ class Task:
         self.finished_late = False
         self.finished_on_time = False
         self.was_preempted: int = 0  # counter for the amount of preemptions
-        self.was_signaled: PredictionFailureSignal = None
+        self.was_signaled: Union[PredictionFailureSignal, None] = None
 
         self.times_preempted: int = 0
         self.slot: Task = self
@@ -41,8 +42,7 @@ class Task:
 
     def run(self, ins):
         """
-        Runs the task, returns 1 if the task hasn't finished and -n if it has finished.
-        n is the amount of instructions that are left in the current tick
+        :param ins: Amount of instructions task is supposed to run
         """
         assert type(ins) is int
         # --- instructions counting ---
@@ -75,8 +75,7 @@ class Task:
 
     def get_overdone_instructions(self):
         """
-        If a task has finished, it has to return the amount of instructions it
-         has overdone so those can be added to another task
+        If a task has finished, it has to return the amount of instructions so they can be considered by the simulation
         """
         assert self.instructions.instructions_retired_task >= self.instructions.real
         return self.instructions.real - self.instructions.instructions_retired_task
@@ -103,7 +102,7 @@ class Task:
 
         self.slot = other_task.slot
 
-    def signal(self, sig: "PredictionFailure"):
+    def signal(self, sig: PredictionFailureSignal):
         """
         This Task was signaled
         :return:

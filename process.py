@@ -8,12 +8,11 @@ import config
 class Process:
     def __init__(self, tasks: List[Task], buffer: int):
         """
-        Representation of a process on a node.
-        Params:
-            tasks: List of Tasks
-            buffer: number of instructions from end of last task to deadline
-            deadline: Deadline in instruction, counting from 0 at start
+        Representation of a process run by the plan-based scheduler
+        :param tasks: List of tasks that constitute process
+        :param buffer: number of instructions from end of last task to deadline
         """
+
         assert type(tasks[0]) is Task
         assert type(buffer) is int
 
@@ -33,14 +32,10 @@ class Process:
         self.instructions_planned = self.instructions_left
         self.process_length = self.instructions_left  # none changing amount of instructions
         self.number_tasks = len(tasks)  # number of all tasks of process
-        self.threshold_state = 0  # 0 => no thresholds breaches, -2 => t_m2, 1/2 => t1/t2
         self.lateness = 0
 
         self.finished_process = False
         self.lateness_neutralizer: int = 0
-
-    def __len__(self):
-        return self.number_tasks
 
     def update_lateness(self):
         lateness_process = sum([t.get_lateness_task() for t in self.tasks])
@@ -55,23 +50,29 @@ class Process:
         return min(completion, 1.0)
 
     def set_neutralizer(self):
+        """
+        Updates lateness_neutralizer so that the process lateness evaluates to 0
+        :return:
+        """
         self.update_lateness()
         self.lateness_neutralizer = -self.lateness
 
     @staticmethod
-    def _generate_random_process(tasks=[], num_tasks=10, pid=0):
+    def _generate_random_process(tasks=None, num_tasks=10, pid=0):
         """
         Static Method here to help Unittest testing
         :param tasks: list of tasks
-        :param buffer: buffer
-        :param deadline: deadline
         :return: random Process
         """
+        if tasks is None:
+            tasks = []
         if not tasks:
             for t in range(num_tasks):
                 tasks.append(Task((randint(1, 10)*config.INS_PER_TICK), t, pid))
-        return Process(tasks)
+        return Process(tasks, 0)
 
     def __repr__(self):
         return f"{{'process_id: {self.process_id}, 'lateness': {self.lateness}}}"
 
+    def __len__(self):
+        return self.number_tasks
