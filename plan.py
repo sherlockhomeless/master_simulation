@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from random import randint, choice
 from copy import deepcopy
 from task import Task
 from process import Process
 import config
-from typing import List, Set, Dict, Tuple
+from typing import List
 
 # TODO: Task-IDs in Plan must be increasing
 
@@ -19,12 +21,12 @@ class Plan:
         # last number is amount of free slots
         self.number_tasks_per_process = self.get_number_tasks_per_p()
         self.number_all_tasks = self.get_number_all_tasks()
-        self.number_all_proceses = len(self.processes)
+        self.number_processes = len(self.processes)
 
         self.index = 0  # for iterating over the class
 
     @staticmethod
-    def generate_plan(context_switch_cost_enabled=False, file_path=None) -> 'Plan':
+    def generate_plan(file_path=None) -> 'Plan':
 
         def fix_ids(task_list) -> [Task]:
             """
@@ -97,12 +99,11 @@ class Plan:
         :param processes: List of List of Tasks, that represent processes
         :return: List of Tasks that switches as much as possible between Tasks
         """
-
-        def sum_rec(l):
-            if len(l) == 1:
-                return len(l[0])
+        def sum_rec(length):
+            if len(length) == 1:
+                return len(length[0])
             else:
-                return len(l[0]) + sum_rec(l[1:])
+                return len(length[0]) + sum_rec(length[1:])
 
         ps = deepcopy(processes)
 
@@ -113,7 +114,7 @@ class Plan:
 
         for i in range(sum_tasks):
             # pick the next task
-            available_processes = set(range(num_processes)) - set([last_picked])
+            available_processes = set(range(num_processes)) - {last_picked}
             if len(available_processes) == 0:
                 available_processes = {0}
             p_to_pick = choice(tuple(available_processes))
@@ -199,21 +200,6 @@ class Plan:
             cur_time = cur_task.set_times(cur_time)
 
     @staticmethod
-    def find_last_task_ending(plan: List[Task], num_processes: int) -> List[int]:
-        """
-        Returns the finishing time for each process
-        """
-        instr_counter = 0
-        # holds finishing time for latest task of each process
-        latest_task = [[] for x in range(num_processes)]
-        for task in plan:
-            instr_counter += task.length_plan
-            if task.task_id == -1:
-                continue
-            latest_task[task.process_id] = instr_counter
-        return latest_task
-
-    @staticmethod
     def generate_tasks_for_processes(length_per_process: List[int], min_len, max_len):
         """
         : length_per_process : Number of tasks per process, last process are free_slots
@@ -259,7 +245,7 @@ class Plan:
         return counter
 
     @staticmethod
-    def sort_plan(tasks: List['Task']) -> list:
+    def sort_plan(tasks: List[Task]) -> list:
         """
         Sorts all tasks of a long list of task into a list for each process.
         Input: [task0,task1,task2,...]
@@ -271,7 +257,7 @@ class Plan:
             if task.process_id not in all_ps:
                 all_ps = all_ps.union({task.process_id})
 
-        all_ps -= set({-1})
+        all_ps -= {-1}
         num_processes = len(all_ps)
 
         task_lists = [[] for p in range(num_processes)]
@@ -329,13 +315,12 @@ class Plan:
             return read_plan
 
     @staticmethod
-    def generate_custom_plan(tasks: List[Task]) -> "Plan":
+    def generate_custom_plan(tasks: List[Task]) -> Plan:
         """
         Generates a plan conforming to the syntax provided using the tasks given in tasks
         :param tasks: tasks to construct Plan
         :return:
         """
-
 
         highest_pid = max([x.process_id for x in tasks])
         tasks_per_p = [[] for x in range(highest_pid+1)]
@@ -351,7 +336,7 @@ class Plan:
         return Plan(tasks, ps)
 
     @staticmethod
-    def write_plan_to_file(plan: "Plan", path: str):
+    def write_plan_to_file(plan: Plan, path: str):
         meta = f'{len(plan.processes)};'
         # meta = f'{len(self.processes)},{len(self.plan)};;'
         for i, p in enumerate(plan.processes):
@@ -394,4 +379,4 @@ class Plan:
             raise StopIteration
 
     def __repr__(self):
-        return f'(processes: {self.number_all_proceses}, num_tasks: {self.number_all_tasks})'
+        return f'(processes: {self.number_processes}, num_tasks: {self.number_all_tasks})'
