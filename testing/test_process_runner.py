@@ -9,6 +9,7 @@ import task
 
 task.ips = config.INS_PER_TICK
 
+
 def create_test_pr(list_ids: [(int, int),...]) -> ProcessRunner:
     """
     :param list_ids: Tuple of (task_id, process_id)

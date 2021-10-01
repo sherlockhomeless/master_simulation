@@ -58,4 +58,12 @@ The following visualization depicts the development of the process lateness comp
 
 ![visualization t2_process and process process lateness](markdown/t2_process.png)
 
-Since the test scenario only included only short running processes with a bias towards lateness, the value of `t2_process` is that of `config.T2_PROCESS_MINIMUM`. Near timer tick 700, the process transgresses on `t2_process` and causes a rescheduling. Due to the stress system, `t2_process` is heavily increased, but slowly returns to its base value.
+Since the test scenario included only short running processes with a bias towards lateness, the value of `t2_process` is that of `config.T2_PROCESS_MINIMUM`. Near timer tick 700, the process transgresses on `t2_process` and causes a rescheduling. Due to the stress system, `t2_process` is heavily increased, but slowly returns to its base value.
+
+The last line of the log file should read something similar to this:
+
+```buildoutcfg
+[run]-INFO: [5793905365][FINISHED]: Ran 135 tasks, sent 13 PFSs 
+```
+
+This line helps to estimate if the prediction failure handling behaviour is sensitive enough and the "appropriate" amount of prediction failures has been sent.

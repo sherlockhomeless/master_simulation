@@ -63,7 +63,7 @@ class ProcessRunner:
                     self.write_unified_log()
         except PlanFinishedException:
             config.logger.info(f'[{self.tick_counter}][FINISHED]: Ran {len(self.finished_tasks)} tasks, '
-                           f'sent {len(self.job_scheduler.received_signals)} PFSs')
+                           f'sent {len(self.job_scheduler.received_signals)} Prediction Failure Signals')
 
     def run_tick(self):
         """
